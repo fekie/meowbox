@@ -1,8 +1,8 @@
 [package]
-edition      = "2024"
-name         = "meowbox"
+edition = "2024"
+name = "meowbox"
 rust-version = "1.88"
-version      = "0.1.0"
+version = "0.1.0"
 
 [[bin]]
 name = "meowbox"
@@ -18,16 +18,21 @@ esp-rtos = { version = "0.2.0", features = [
   "esp32s3",
 ] }
 
-defmt                  = "1.0.1"
+defmt = "1.0.1"
 esp-bootloader-esp-idf = { version = "0.4.0", features = ["defmt", "esp32s3"] }
 
 embassy-executor = { version = "0.9.1", features = ["defmt"] }
-embassy-time     = { version = "0.5.0", features = ["defmt"] }
-esp-alloc        = { version = "0.9.0", features = ["defmt"] }
-esp-println      = { version = "0.16.1", features = ["defmt-espflash", "esp32s3"] }
+embassy-time = { version = "0.5.0", features = ["defmt"] }
+esp-alloc = { version = "0.9.0", features = ["defmt"] }
+esp-println = { version = "0.16.1", features = ["defmt-espflash", "esp32s3"] }
 
 critical-section = "1.2.0"
-static_cell      = "2.1.1"
+static_cell = "2.1.1"
+ssd1306 = { version = "0.10.0", features = ["async", "graphics"] }
+embedded-graphics = "0.8.1"
+heapless = "0.9.2"
+micromath = "2.1.0"
+noise_perlin = "1.0.0"
 
 
 [profile.dev]
@@ -36,10 +41,10 @@ static_cell      = "2.1.1"
 opt-level = "s"
 
 [profile.release]
-codegen-units    = 1     # LLVM can perform better optimizations using a single thread
-debug            = 2
+codegen-units = 1        # LLVM can perform better optimizations using a single thread
+debug = 2
 debug-assertions = false
-incremental      = false
-lto              = 'fat'
-opt-level        = 's'
-overflow-checks  = false
+incremental = false
+lto = 'fat'
+opt-level = 's'
+overflow-checks = false

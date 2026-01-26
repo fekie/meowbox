@@ -5,42 +5,168 @@
     reason = "mem::forget is generally not safe to do with esp_hal types, especially those \
     holding buffers for the duration of a data transfer."
 )]
-#![deny(clippy::large_stack_frames)]
 
+use defmt::dbg;
+use defmt::debug;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
+
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use esp_println as _;
 
-use defmt::println;
+// I2C
+use esp_hal::i2c::master::Config as I2cConfig; // for convenience, importing as alias
+use esp_hal::i2c::master::I2c;
+use esp_hal::rng::Rng;
+use esp_hal::time::Rate;
 
-use esp_hal::gpio::Output;
+use heapless::vec;
+use micromath::F32;
+use micromath::F32Ext;
+
+// OLED
+use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
+
+// Embedded Graphics
+use embedded_graphics::{
+    mono_font::{MonoTextStyleBuilder, ascii::FONT_6X10},
+    pixelcolor::BinaryColor,
+    prelude::Point,
+    prelude::*,
+    text::{Baseline, Text},
+};
+
+use core::f32::consts::PI;
+use noise_perlin::perlin_2d;
+
+const SCREEN_WIDTH: u32 = 128;
+const SCREEN_HEIGHT: u32 = 64;
+const FLOW_FIELD_SIZE: usize = 512; // total amount of chunks, 32 x 16
+const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
+const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
 
 #[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    defmt::info!("{:?}", info);
     loop {}
 }
 
-extern crate alloc;
+/// Represents a one pixel particle. Each setter will adjust the
+/// position so the particle wraps to the other side of the screen.
+#[derive(Debug, Default)]
+struct Particle {
+    x: f32,
+    y: f32,
+    velocity_x: f32,
+    velocity_y: f32,
+}
+
+impl Particle {
+    pub fn x(&self) -> f32 {
+        self.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.y
+    }
+
+    pub fn set_pos(&mut self, x: f32, y: f32) {
+        let x_adj = x % SCREEN_WIDTH as f32;
+        self.x = match x_adj.is_sign_positive() {
+            true => x_adj,
+            false => -x_adj,
+        };
+
+        let y_adj = y % SCREEN_HEIGHT as f32;
+        self.y = match y_adj.is_sign_positive() {
+            true => y_adj,
+            false => -y_adj,
+        };
+
+        //self.x = x % SCREEN_WIDTH as f32;
+        //self.y = y % SCREEN_HEIGHT as f32;
+    }
+
+    /// Updates its velocity according to what part
+    /// of the flow field it lands on
+    fn update_velocity(&mut self, flow_field: &FlowField) {
+        let flow_field_x = (self.x / FLOW_CHUNK_SIZE as f32) as usize;
+        let flow_field_y = (self.y / FLOW_CHUNK_SIZE as f32) as usize;
+        let flow_field_index =
+            (flow_field_x * (SCREEN_HEIGHT / (FLOW_CHUNK_SIZE)) as usize) + flow_field_y;
+        //info!("{} {}", self.x, self.y);
+        //info!("{} {}", flow_field_x, flow_field_y);
+        //info!("{}", flow_field_index);
+        let new_velocity_angle = flow_field.0[flow_field_index];
+
+        self.velocity_x = new_velocity_angle.cos() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
+        self.velocity_y = new_velocity_angle.sin() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
+    }
+
+    /// Updates position according to velocity
+    fn update_position(&mut self) {
+        self.set_pos(self.x + self.velocity_x, self.y + self.velocity_y);
+    }
+}
+
+#[derive(Default)]
+struct World {
+    mode: Mode,
+}
+
+impl World {
+    fn new() -> Self {
+        World::default()
+    }
+
+    fn stop(&mut self) {
+        self.mode = Mode::Stopped;
+    }
+}
+
+#[derive(Default)]
+enum Mode {
+    #[default]
+    Stopped,
+    Nematode,
+}
+
+/// We have a 128x64 screen, so we
+/// will do a 8x4 grid flow field, where
+/// each one has an angle (each has the same magnitude).
+/// This array will contain row 0 first, then row 1, etc
+struct FlowField([f32; FLOW_FIELD_SIZE]);
+
+impl FlowField {
+    fn new() -> Self {
+        Self([0.0; 512])
+    }
+}
+
+/// Generates a value between 0.0 and 1.0
+fn random(rng: &Rng) -> f32 {
+    (rng.random() as u8) as f32 / 255.0
+}
+
+fn random_angle(rng: &Rng) -> f32 {
+    random(rng) * 2.0 * PI
+}
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
-#[allow(
-    clippy::large_stack_frames,
-    reason = "it's not unusual to allocate larger buffers etc. in main"
-)]
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
-    // generator version: 1.2.0
+    //info!("{}", -130.0 % -128.0);
+    // generator version: 1.0.0
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
+    let mut rng = Rng::new();
 
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
@@ -50,17 +176,126 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: Spawn some tasks
     let _ = spawner;
 
-    let mut led = Output::new(peripherals.GPIO2, Level::High, OutputConfig::default());
+    let i2c_bus = I2c::new(
+        peripherals.I2C0,
+        // I2cConfig is alias of esp_hal::i2c::master::I2c::Config
+        I2cConfig::default().with_frequency(Rate::from_khz(400)),
+    )
+    .unwrap()
+    .with_scl(peripherals.GPIO9)
+    .with_sda(peripherals.GPIO10)
+    .into_async();
 
-    loop {
-        led.toggle();
-        Timer::after(Duration::from_secs(1)).await;
+    let interface = I2CDisplayInterface::new(i2c_bus);
+    // initialize the display
+    let mut display = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+        .into_buffered_graphics_mode();
+    display.init().await.expect("failed to initialize display");
+
+    let text_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X10)
+        .text_color(BinaryColor::On)
+        .build();
+
+    //let mut world = World::new();
+    //world.set_mode(Mode::Nematode);
+
+    let mut particles: [Particle; 5] = [
+        Particle::default(),
+        Particle::default(),
+        Particle::default(),
+        Particle::default(),
+        Particle::default(),
+    ];
+
+    particles[1].set_pos(10.0, 10.0);
+    particles[2].set_pos(20.0, 20.0);
+    particles[3].set_pos(30.0, 30.0);
+    particles[4].set_pos(127.0, 63.0);
+
+    display.flush().await.unwrap();
+
+    //let mut i = 0;
+
+    // display.clear(BinaryColor::Off).unwrap();
+
+    // Pixel(Point::new(30, 30 as i32), BinaryColor::On)
+    //     .draw(&mut display)
+    //     .unwrap();
+
+    let mut angle: f32 = 0.0;
+
+    // We have a 128x64 screen, so we
+    // will do a 8x4 grid flow field, where
+    // each one has an angle (each has the same magnitude).
+    // This array will contain row 0 first, then row 1, etc
+    //let mut flow_field: [f32; FLOW_FIELD_SIZE] = [0.0; FLOW_FIELD_SIZE];
+
+    let mut flow_field = FlowField::new();
+
+    for (i, chunk) in flow_field.0.iter_mut().enumerate() {
+        // a full rotation is 2pi, so we want to have each one generate
+        // a bit more of a rotation than the last
+
+        //let angle = (i as f32 / FLOW_FIELD_SIZE as f32) * 2.0 * PI;
+        //let angle = PI / 8.0;
+        //let random = (rng.random() as u8) as f32 / 255.0;
+        //let angle = random * 2.0 * PI;
+        //info!("{}", angle);
+
+        //let random_angle = random_angle(&rng);
+
+        let y = i / SCREEN_WIDTH as usize;
+        let x = i % SCREEN_WIDTH as usize;
+
+        info!("{} {}", x, y);
+        let perlin_angle = perlin_2d(x as f32 * 0.03, y as f32 * 0.03).clamp(-1.0, 1.0) * 2.0 * PI;
+
+        info!("{}", perlin_angle);
+
+        *chunk = perlin_angle;
     }
 
-    // loop {
-    //     info!("Hello world!");
-    //     Timer::after(Duration::from_secs(1)).await;
-    // }
+    //info!("{:?}", flow_field);
 
-    // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0/examples
+    loop {
+        display.clear(BinaryColor::Off).unwrap();
+
+        //let baseline = particles.first().unwrap().x();
+
+        for (i, particle) in particles.iter_mut().enumerate() {
+            Pixel(
+                Point::new(particle.x() as i32, particle.y() as i32),
+                BinaryColor::On,
+            )
+            .draw(&mut display)
+            .unwrap();
+
+            //let adjusted_angle = angle - ((i) as f32 * 0.20);
+
+            //let y = ((adjusted_angle.cos() / 2.0) + 0.5) * (SCREEN_HEIGHT as f32 - 1.0);
+            //info!("{}", y);
+
+            //particle.set_pos(particle.x() + 1.0, y);
+
+            particle.update_velocity(&flow_field);
+            particle.update_position();
+
+            //info!("{} {}", particle.x(), particle.y())
+        }
+
+        display.flush().await.unwrap();
+
+        // make the angle be able to swing plus or minus pi/2
+        angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+
+        for chunk in &mut flow_field.0 {
+            *chunk += angle;
+        }
+
+        //i = (i + 1) % 5;
+
+        //Timer::after(Duration::from_secs(1)).await;
+        //Timer::after(Duration::from_millis(10)).await;
+    }
 }
