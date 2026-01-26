@@ -29,18 +29,6 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 
 extern crate alloc;
 
-static SWINT0: Mutex<RefCell<Option<SoftwareInterrupt<0>>>> = Mutex::new(RefCell::new(None));
-
-#[handler(priority = Priority::Priority1)]
-fn swint0_handler() {
-    info!("SW interrupt0");
-    critical_section::with(|cs| {
-        if let Some(swint) = SWINT0.borrow_ref(cs).as_ref() {
-            swint.reset();
-        }
-    });
-}
-
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -65,22 +53,6 @@ async fn main(spawner: Spawner) -> ! {
 
     // TODO: Spawn some tasks
     let _ = spawner;
-
-    let mut sw_int = SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-    critical_section::with(|cs| {
-        sw_int
-            .software_interrupt0
-            .set_interrupt_handler(swint0_handler);
-        SWINT0
-            .borrow_ref_mut(cs)
-            .replace(sw_int.software_interrupt0);
-    });
-
-    critical_section::with(|cs| {
-        if let Some(swint) = SWINT0.borrow_ref(cs).as_ref() {
-            swint.raise();
-        }
-    });
 
     loop {
         info!("Hello world!");
