@@ -14,13 +14,9 @@ use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use esp_println as _;
 
-use core::cell::RefCell;
-use critical_section::Mutex;
 use defmt::println;
-use esp_hal::handler;
-use esp_hal::interrupt::Priority;
-use esp_hal::interrupt::software::SoftwareInterrupt;
-use esp_hal::interrupt::software::SoftwareInterruptControl;
+
+use esp_hal::gpio::Output;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -54,10 +50,17 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: Spawn some tasks
     let _ = spawner;
 
+    let mut led = Output::new(peripherals.GPIO2, Level::High, OutputConfig::default());
+
     loop {
-        info!("Hello world!");
+        led.toggle();
         Timer::after(Duration::from_secs(1)).await;
     }
+
+    // loop {
+    //     info!("Hello world!");
+    //     Timer::after(Duration::from_secs(1)).await;
+    // }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0/examples
 }
