@@ -268,11 +268,14 @@ async fn main(spawner: Spawner) -> ! {
         Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
     //let right_button_light = peripherals.GPIO12
 
+    let mut buzzer = Output::new(peripherals.GPIO7, Level::High, OutputConfig::default());
+
     //info!("{:?}", flow_field);
 
     loop {
         right_button_light.set_high();
         left_button_light.set_high();
+        buzzer.toggle();
 
         display.clear(BinaryColor::Off).unwrap();
 
