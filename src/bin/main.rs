@@ -154,6 +154,10 @@ fn random_angle(rng: &Rng) -> f32 {
     random(rng) * 2.0 * PI
 }
 
+use esp_hal::gpio::Level;
+use esp_hal::gpio::Output;
+use esp_hal::gpio::OutputConfig;
+
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -256,9 +260,15 @@ async fn main(spawner: Spawner) -> ! {
         *chunk = perlin_angle;
     }
 
+    let mut led = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
+
+    //let right_button_light = peripherals.GPIO12
+
     //info!("{:?}", flow_field);
 
     loop {
+        led.set_high();
+
         display.clear(BinaryColor::Off).unwrap();
 
         //let baseline = particles.first().unwrap().x();
