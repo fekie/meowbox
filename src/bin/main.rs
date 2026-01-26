@@ -260,14 +260,19 @@ async fn main(spawner: Spawner) -> ! {
         *chunk = perlin_angle;
     }
 
-    let mut led = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
+    // we use a 220 resistor on this btw
+    let mut right_button_light =
+        Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
 
+    let mut left_button_light =
+        Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
     //let right_button_light = peripherals.GPIO12
 
     //info!("{:?}", flow_field);
 
     loop {
-        led.set_high();
+        right_button_light.set_high();
+        left_button_light.set_high();
 
         display.clear(BinaryColor::Off).unwrap();
 
