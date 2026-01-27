@@ -18,7 +18,7 @@ use esp_hal::gpio::InputConfig;
 use esp_hal::timer::timg::TimerGroup;
 use esp_println as _;
 
-use esp_hal::i2c::master::Config as I2cConfig; // for convenience, importing as alias
+use esp_hal::i2c::master::Config as I2cConfig;
 use esp_hal::i2c::master::I2c;
 use esp_hal::rng::Rng;
 use esp_hal::time::Rate;
