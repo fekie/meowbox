@@ -47,7 +47,9 @@ const FLOW_FIELD_SIZE: usize = 512; // total amount of chunks, 32 x 16
 const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
 const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
 
-use meowbox::tasks::{left_button_event, right_button_event};
+use meowbox::tasks::{
+    left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
+};
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -204,6 +206,18 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(left_button_event(
         &hardware::LEFT_BUTTON,
         &hardware::LEFT_BUTTON_LED,
+        &hardware::BUZZER,
+    ));
+
+    let _ = spawner.spawn(rotary_switch_left_event(
+        &hardware::ROTARY_SWITCH_LEFT,
+        &hardware::LEFT_BUTTON_LED,
+        &hardware::BUZZER,
+    ));
+
+    let _ = spawner.spawn(rotary_switch_right_event(
+        &hardware::ROTARY_SWITCH_RIGHT,
+        &hardware::RIGHT_BUTTON_LED,
         &hardware::BUZZER,
     ));
 
