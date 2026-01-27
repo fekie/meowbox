@@ -333,45 +333,43 @@ async fn main(spawner: Spawner) -> ! {
         // left_button_light.set_high();
         // //buzzer.toggle();
 
-        // display.clear(BinaryColor::Off).unwrap();
+        display.clear(BinaryColor::Off).unwrap();
 
         // //let baseline = particles.first().unwrap().x();
 
-        // for (i, particle) in particles.iter_mut().enumerate() {
-        //     Pixel(
-        //         Point::new(particle.x() as i32, particle.y() as i32),
-        //         BinaryColor::On,
-        //     )
-        //     .draw(&mut display)
-        //     .unwrap();
+        for (i, particle) in particles.iter_mut().enumerate() {
+            Pixel(
+                Point::new(particle.x() as i32, particle.y() as i32),
+                BinaryColor::On,
+            )
+            .draw(&mut display)
+            .unwrap();
 
-        //     //let adjusted_angle = angle - ((i) as f32 * 0.20);
+            //let adjusted_angle = angle - ((i) as f32 * 0.20);
 
-        //     //let y = ((adjusted_angle.cos() / 2.0) + 0.5) * (SCREEN_HEIGHT as f32 - 1.0);
-        //     //info!("{}", y);
+            //let y = ((adjusted_angle.cos() / 2.0) + 0.5) * (SCREEN_HEIGHT as f32 - 1.0);
+            //info!("{}", y);
 
-        //     //particle.set_pos(particle.x() + 1.0, y);
+            //particle.set_pos(particle.x() + 1.0, y);
 
-        //     particle.update_velocity(&flow_field);
-        //     particle.update_position();
+            particle.update_velocity(&flow_field);
+            particle.update_position();
 
-        //     //info!("{} {}", particle.x(), particle.y())
-        // }
+            //info!("{} {}", particle.x(), particle.y())
+        }
 
-        // display.flush().await.unwrap();
+        display.flush().await.unwrap();
 
-        // // make the angle be able to swing plus or minus pi/2
-        // angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+        // make the angle be able to swing plus or minus pi/2
+        angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
 
-        // for chunk in &mut flow_field.0 {
-        //     *chunk += angle;
-        // }
-
-        //i = (i + 1) % 5;
+        for chunk in &mut flow_field.0 {
+            *chunk += angle;
+        }
 
         //\Timer::after(Duration::from_secs(1)).await;
 
-        Timer::after(Duration::from_millis(100)).await;
+        Timer::after(Duration::from_millis(0)).await;
     }
 }
 
@@ -416,11 +414,8 @@ async fn right_button_event(
             pin.wait_for_any_edge().await;
             info!("Right button pressed!");
             led.lock().await.as_mut().unwrap().set_low();
-            Timer::after(Duration::from_millis(1000)).await; // debounce
+            Timer::after(Duration::from_millis(200)).await; // debounce
             led.lock().await.as_mut().unwrap().set_high();
-        } else {
-            info!("wha");
-            Timer::after(Duration::from_millis(1000)).await;
         }
     }
     // loop {
