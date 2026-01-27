@@ -13,6 +13,8 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 
 use esp_hal::clock::CpuClock;
+use esp_hal::gpio::Input;
+use esp_hal::gpio::InputConfig;
 use esp_hal::timer::timg::TimerGroup;
 use esp_println as _;
 
@@ -25,6 +27,8 @@ use esp_hal::time::Rate;
 use heapless::vec;
 use micromath::F32;
 use micromath::F32Ext;
+
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 
 // OLED
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
@@ -40,6 +44,8 @@ use embedded_graphics::{
 
 use core::f32::consts::PI;
 use noise_perlin::perlin_2d;
+
+use embassy_sync::mutex::Mutex;
 
 const SCREEN_WIDTH: u32 = 128;
 const SCREEN_HEIGHT: u32 = 64;
@@ -165,10 +171,20 @@ use esp_rtos::embassy;
 
 use embassy_executor::task;
 
+use esp_hal::gpio::Pull;
+
+//use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+//use embassy_sync::mutex::Mutex;
+
+type ButtonType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
+static BUTTON: ButtonType = Mutex::new(None);
+
 #[embassy_executor::task]
 async fn mytask() {
     info!("aaaaaaaaaa");
     // Function body
+
+    //loop {}
 }
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
@@ -193,7 +209,7 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: Spawn some tasks
     let a = spawner;
 
-    a.spawn(mytask());
+    //a.spawn(mytask());
 
     let i2c_bus = I2c::new(
         peripherals.I2C0,
@@ -278,10 +294,23 @@ async fn main(spawner: Spawner) -> ! {
     // we use a 220 resistor on this btw
     let mut right_button_light =
         Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
-
     let mut left_button_light =
         Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
     //let right_button_light = peripherals.GPIO12
+
+    let right_button = Input::new(
+        peripherals.GPIO11,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
+    // inner scope is so that once the mutex is written to, the MutexGuard is dropped, thus the
+    // Mutex is released
+    {
+        *(BUTTON.lock().await) = Some(right_button);
+    }
+
+    spawner.spawn(mytask());
+    spawner.spawn(mytask2(&BUTTON));
 
     //let mut buzzer = Output::new(peripherals.GPIO7, Level::High, OutputConfig::default());
 
@@ -332,5 +361,50 @@ async fn main(spawner: Spawner) -> ! {
 
         //Timer::after(Duration::from_secs(1)).await;
         //Timer::after(Duration::from_millis(10)).await;
+    }
+}
+
+// #[embassy_executor::task]
+// async fn blinker(led: &'static Mutex<CriticalSectionRawMutex, Output<'static, Gpio2>>) {
+//     loop {
+//         {
+//             let mut led = led.lock().await; // lock the mutex
+//             led.set_high();
+//         }
+//         Timer::after(Duration::from_millis(500)).await;
+
+//         {
+//             let mut led = led.lock().await;
+//             led.set_low();
+//         }
+//         Timer::after(Duration::from_millis(500)).await;
+//     }
+// }
+
+#[task]
+async fn mytask2(button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>) {
+    loop {
+        //button.lock().await.as_ref().unwrap().wait_for_low().await;
+
+        button.lock().await.as_mut().unwrap().wait_for_low().await;
+
+        info!("Button pressed!");
+
+        // 100 ms debounce
+        Timer::after(Duration::from_millis(100)).await;
+
+        // {
+        //     let mut led = led.lock().await;
+        //     led.set_high();
+        // }
+
+        // Timer::after(Duration::from_millis(500)).await;
+
+        // {
+        //     let mut led = led.lock().await;
+        //     led.set_low();
+        // }
+
+        // Timer::after(Duration::from_millis(500)).await;
     }
 }
