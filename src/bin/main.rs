@@ -21,6 +21,7 @@ use esp_hal::i2c::master::I2c;
 use esp_hal::rng::Rng;
 use esp_hal::time::Rate;
 
+use meowbox::hardware;
 use micromath::F32Ext;
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -168,17 +169,6 @@ use esp_hal::gpio::Pull;
 //use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::mutex::Mutex;
 
-type ButtonType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
-static RIGHT_BUTTON: ButtonType = Mutex::new(None);
-static LEFT_BUTTON: ButtonType = Mutex::new(None);
-
-type ButtonLEDType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
-static RIGHT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
-static LEFT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
-
-type BuzzerType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
-static BUZZER: BuzzerType = Mutex::new(None);
-
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -188,70 +178,54 @@ async fn main(spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    let mut rng = Rng::new();
+    let mut display = hardware::init_peripherals(peripherals).await;
 
-    let timg0 = TimerGroup::new(peripherals.TIMG0);
-    esp_rtos::start(timg0.timer0);
+    let mut rng = Rng::new();
 
     info!("Embassy initialized!");
 
-    let right_button = Input::new(
-        peripherals.GPIO11,
-        InputConfig::default().with_pull(Pull::Up),
-    );
-
-    let left_button = Input::new(
-        peripherals.GPIO5,
-        InputConfig::default().with_pull(Pull::Up),
-    );
-
-    let right_button_light = Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
-    let left_button_light = Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
-
-    let buzzer = Output::new(peripherals.GPIO7, Level::Low, OutputConfig::default());
-
     // TODO: make this match up with the actual pin
-    let rotary_switch_left = Input::new(
-        peripherals.GPIO21,
-        InputConfig::default().with_pull(Pull::Up),
-    );
-
-    let rotary_switch_right = Input::new(
-        peripherals.GPIO47,
-        InputConfig::default().with_pull(Pull::Up),
-    );
 
     // inner scope is so that once the mutex is written to, the MutexGuard is dropped, thus the
     // Mutex is released
-    {
-        *(RIGHT_BUTTON.lock().await) = Some(right_button);
-        *(LEFT_BUTTON.lock().await) = Some(left_button);
-        *(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
-        *(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
-        *(BUZZER.lock().await) = Some(buzzer);
-    }
+    // {
+    //     *(RIGHT_BUTTON.lock().await) = Some(right_button);
+    //     *(LEFT_BUTTON.lock().await) = Some(left_button);
+    //     *(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
+    //     *(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
+    //     *(BUZZER.lock().await) = Some(buzzer);
+    // }
 
     let _ = spawner.spawn(right_button_event(
-        &RIGHT_BUTTON,
-        &RIGHT_BUTTON_LED,
-        &BUZZER,
+        &hardware::RIGHT_BUTTON,
+        &hardware::RIGHT_BUTTON_LED,
+        &hardware::BUZZER,
     ));
-    let _ = spawner.spawn(left_button_event(&LEFT_BUTTON, &LEFT_BUTTON_LED, &BUZZER));
+    let _ = spawner.spawn(left_button_event(
+        &hardware::LEFT_BUTTON,
+        &hardware::LEFT_BUTTON_LED,
+        &hardware::BUZZER,
+    ));
 
-    let i2c_bus = I2c::new(
-        peripherals.I2C0,
-        // I2cConfig is alias of esp_hal::i2c::master::I2c::Config
-        I2cConfig::default().with_frequency(Rate::from_khz(400)),
-    )
-    .unwrap()
-    .with_scl(peripherals.GPIO9)
-    .with_sda(peripherals.GPIO10)
-    .into_async();
+    // let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
+    //     peripherals.I2C0,
+    //     // I2cConfig is alias of esp_hal::i2c::master::I2c::Config
+    //     I2cConfig::default().with_frequency(Rate::from_khz(400)),
+    // )
+    // .unwrap()
+    // .with_scl(peripherals.GPIO9)
+    // .with_sda(peripherals.GPIO10)
+    // .into_async();
 
-    let interface = I2CDisplayInterface::new(i2c_bus);
-    // initialize the display
-    let mut display = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
-        .into_buffered_graphics_mode();
+    // let interface: I2CInterface<I2c<'_, esp_hal::Async>> = I2CDisplayInterface::new(i2c_bus);
+    // // initialize the display
+    // let mut display: Ssd1306Async<
+    //     I2CInterface<I2c<'_, esp_hal::Async>>,
+    //     DisplaySize128x64,
+    //     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
+    // > = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+    //     .into_buffered_graphics_mode();
+
     display.init().await.expect("failed to initialize display");
 
     let text_style = MonoTextStyleBuilder::new()
