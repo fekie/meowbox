@@ -158,6 +158,19 @@ use esp_hal::gpio::Level;
 use esp_hal::gpio::Output;
 use esp_hal::gpio::OutputConfig;
 
+use esp_hal::peripherals::Peripherals;
+use esp_println::print;
+
+use esp_rtos::embassy;
+
+use embassy_executor::task;
+
+#[embassy_executor::task]
+async fn mytask() {
+    info!("aaaaaaaaaa");
+    // Function body
+}
+
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -178,7 +191,9 @@ async fn main(spawner: Spawner) -> ! {
     info!("Embassy initialized!");
 
     // TODO: Spawn some tasks
-    let _ = spawner;
+    let a = spawner;
+
+    a.spawn(mytask());
 
     let i2c_bus = I2c::new(
         peripherals.I2C0,
@@ -252,10 +267,10 @@ async fn main(spawner: Spawner) -> ! {
         let y = i / SCREEN_WIDTH as usize;
         let x = i % SCREEN_WIDTH as usize;
 
-        info!("{} {}", x, y);
+        //info!("{} {}", x, y);
         let perlin_angle = perlin_2d(x as f32 * 0.03, y as f32 * 0.03).clamp(-1.0, 1.0) * 2.0 * PI;
 
-        info!("{}", perlin_angle);
+        //info!("{}", perlin_angle);
 
         *chunk = perlin_angle;
     }
@@ -268,14 +283,16 @@ async fn main(spawner: Spawner) -> ! {
         Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
     //let right_button_light = peripherals.GPIO12
 
-    let mut buzzer = Output::new(peripherals.GPIO7, Level::High, OutputConfig::default());
+    //let mut buzzer = Output::new(peripherals.GPIO7, Level::High, OutputConfig::default());
 
     //info!("{:?}", flow_field);
+
+    //let mut button: GpioPin<Input<PullUp>, 0> = io.pins.gpio0.into_pull_up_input();
 
     loop {
         right_button_light.set_high();
         left_button_light.set_high();
-        buzzer.toggle();
+        //buzzer.toggle();
 
         display.clear(BinaryColor::Off).unwrap();
 
