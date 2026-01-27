@@ -18,14 +18,11 @@ use esp_hal::gpio::InputConfig;
 use esp_hal::timer::timg::TimerGroup;
 use esp_println as _;
 
-// I2C
 use esp_hal::i2c::master::Config as I2cConfig; // for convenience, importing as alias
 use esp_hal::i2c::master::I2c;
 use esp_hal::rng::Rng;
 use esp_hal::time::Rate;
 
-use heapless::vec;
-use micromath::F32;
 use micromath::F32Ext;
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -102,9 +99,6 @@ impl Particle {
         let flow_field_y = (self.y / FLOW_CHUNK_SIZE as f32) as usize;
         let flow_field_index =
             (flow_field_x * (SCREEN_HEIGHT / (FLOW_CHUNK_SIZE)) as usize) + flow_field_y;
-        //info!("{} {}", self.x, self.y);
-        //info!("{} {}", flow_field_x, flow_field_y);
-        //info!("{}", flow_field_index);
         let new_velocity_angle = flow_field.0[flow_field_index];
 
         self.velocity_x = new_velocity_angle.cos() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
@@ -184,23 +178,12 @@ type ButtonLEDType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
 static RIGHT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
 static LEFT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
 
-#[embassy_executor::task]
-async fn mytask() {
-    info!("aaaaaaaaaa");
-    // Function body
-
-    //loop {}
-}
-
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
-    //info!("{}", -130.0 % -128.0);
-    // generator version: 1.0.0
-
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
@@ -238,8 +221,6 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(right_button_event(&RIGHT_BUTTON, &RIGHT_BUTTON_LED));
     let _ = spawner.spawn(left_button_event(&LEFT_BUTTON, &LEFT_BUTTON_LED));
 
-    //a.spawn(mytask());
-
     let i2c_bus = I2c::new(
         peripherals.I2C0,
         // I2cConfig is alias of esp_hal::i2c::master::I2c::Config
@@ -261,9 +242,6 @@ async fn main(spawner: Spawner) -> ! {
         .text_color(BinaryColor::On)
         .build();
 
-    //let mut world = World::new();
-    //world.set_mode(Mode::Nematode);
-
     let mut particles: [Particle; 5] = [
         Particle::default(),
         Particle::default(),
@@ -279,14 +257,6 @@ async fn main(spawner: Spawner) -> ! {
 
     display.flush().await.unwrap();
 
-    //let mut i = 0;
-
-    // display.clear(BinaryColor::Off).unwrap();
-
-    // Pixel(Point::new(30, 30 as i32), BinaryColor::On)
-    //     .draw(&mut display)
-    //     .unwrap();
-
     let mut angle: f32 = 0.0;
 
     // We have a 128x64 screen, so we
@@ -301,43 +271,16 @@ async fn main(spawner: Spawner) -> ! {
         // a full rotation is 2pi, so we want to have each one generate
         // a bit more of a rotation than the last
 
-        //let angle = (i as f32 / FLOW_FIELD_SIZE as f32) * 2.0 * PI;
-        //let angle = PI / 8.0;
-        //let random = (rng.random() as u8) as f32 / 255.0;
-        //let angle = random * 2.0 * PI;
-        //info!("{}", angle);
-
-        //let random_angle = random_angle(&rng);
-
         let y = i / SCREEN_WIDTH as usize;
         let x = i % SCREEN_WIDTH as usize;
 
-        //info!("{} {}", x, y);
         let perlin_angle = perlin_2d(x as f32 * 0.03, y as f32 * 0.03).clamp(-1.0, 1.0) * 2.0 * PI;
-
-        //info!("{}", perlin_angle);
 
         *chunk = perlin_angle;
     }
 
-    // we use a 220 resistor on this btw
-
-    //let right_button_light = peripherals.GPIO12
-
-    //let mut buzzer = Output::new(peripherals.GPIO7, Level::High, OutputConfig::default());
-
-    //info!("{:?}", flow_field);
-
-    //let mut button: GpioPin<Input<PullUp>, 0> = io.pins.gpio0.into_pull_up_input();
-
     loop {
-        // right_button_light.set_high();
-        // left_button_light.set_high();
-        // //buzzer.toggle();
-
         display.clear(BinaryColor::Off).unwrap();
-
-        // //let baseline = particles.first().unwrap().x();
 
         for (i, particle) in particles.iter_mut().enumerate() {
             Pixel(
@@ -347,17 +290,8 @@ async fn main(spawner: Spawner) -> ! {
             .draw(&mut display)
             .unwrap();
 
-            //let adjusted_angle = angle - ((i) as f32 * 0.20);
-
-            //let y = ((adjusted_angle.cos() / 2.0) + 0.5) * (SCREEN_HEIGHT as f32 - 1.0);
-            //info!("{}", y);
-
-            //particle.set_pos(particle.x() + 1.0, y);
-
             particle.update_velocity(&flow_field);
             particle.update_position();
-
-            //info!("{} {}", particle.x(), particle.y())
         }
 
         display.flush().await.unwrap();
@@ -369,28 +303,9 @@ async fn main(spawner: Spawner) -> ! {
             *chunk += angle;
         }
 
-        //\Timer::after(Duration::from_secs(1)).await;
-
         Timer::after(Duration::from_millis(0)).await;
     }
 }
-
-// #[embassy_executor::task]
-// async fn blinker(led: &'static Mutex<CriticalSectionRawMutex, Output<'static, Gpio2>>) {
-//     loop {
-//         {
-//             let mut led = led.lock().await; // lock the mutex
-//             led.set_high();
-//         }
-//         Timer::after(Duration::from_millis(500)).await;
-
-//         {
-//             let mut led = led.lock().await;
-//             led.set_low();
-//         }
-//         Timer::after(Duration::from_millis(500)).await;
-//     }
-// }
 
 #[task]
 async fn left_button_event(
