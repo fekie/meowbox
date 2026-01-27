@@ -182,6 +182,7 @@ static LEFT_BUTTON: ButtonType = Mutex::new(None);
 
 type ButtonLEDType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
 static RIGHT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
+static LEFT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
 
 #[embassy_executor::task]
 async fn mytask() {
@@ -231,10 +232,11 @@ async fn main(spawner: Spawner) -> ! {
         *(RIGHT_BUTTON.lock().await) = Some(right_button);
         *(LEFT_BUTTON.lock().await) = Some(left_button);
         *(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
+        *(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
     }
 
     let _ = spawner.spawn(right_button_event(&RIGHT_BUTTON, &RIGHT_BUTTON_LED));
-    let _ = spawner.spawn(left_button_event(&LEFT_BUTTON));
+    let _ = spawner.spawn(left_button_event(&LEFT_BUTTON, &LEFT_BUTTON_LED));
 
     //a.spawn(mytask());
 
@@ -393,14 +395,13 @@ async fn main(spawner: Spawner) -> ! {
 #[task]
 async fn left_button_event(
     button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>,
+    led: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
 ) {
     loop {
         button.lock().await.as_mut().unwrap().wait_for_low().await;
-
-        info!("Left button pressed!");
-
-        // 100 ms debounce
-        Timer::after(Duration::from_millis(10)).await;
+        led.lock().await.as_mut().unwrap().set_low();
+        Timer::after(Duration::from_millis(200)).await;
+        led.lock().await.as_mut().unwrap().set_high();
     }
 }
 
@@ -410,20 +411,9 @@ async fn right_button_event(
     led: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
 ) {
     loop {
-        if let Some(pin) = button.lock().await.as_mut() {
-            pin.wait_for_any_edge().await;
-            info!("Right button pressed!");
-            led.lock().await.as_mut().unwrap().set_low();
-            Timer::after(Duration::from_millis(200)).await; // debounce
-            led.lock().await.as_mut().unwrap().set_high();
-        }
+        button.lock().await.as_mut().unwrap().wait_for_low().await;
+        led.lock().await.as_mut().unwrap().set_low();
+        Timer::after(Duration::from_millis(200)).await;
+        led.lock().await.as_mut().unwrap().set_high();
     }
-    // loop {
-    //     button.lock().await.as_mut().unwrap().wait_for_low().await;
-
-    //     info!("Right button pressed!");
-
-    //     // 100 ms debounce
-    //     Timer::after(Duration::from_millis(10)).await;
-    // }
 }
