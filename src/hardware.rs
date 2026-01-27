@@ -32,16 +32,19 @@ pub static LEFT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
 pub type BuzzerType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
 pub static BUZZER: BuzzerType = Mutex::new(None);
 
+type Buffered = ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>;
+type Terminal = ssd1306::mode::TerminalModeAsync;
+
 use esp_hal::peripherals::Peripherals;
 
-/// Initializes peripherals and assigns them to their respective mutexes.
-pub async fn init_peripherals(
-    peripherals: Peripherals,
-) -> Ssd1306Async<
+type Display = Ssd1306Async<
     I2CInterface<I2c<'static, esp_hal::Async>>,
     DisplaySize128x64,
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
-> {
+>;
+
+/// Initializes peripherals and assigns them to their respective mutexes.
+pub async fn init_peripherals(peripherals: Peripherals) -> Display {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
 
