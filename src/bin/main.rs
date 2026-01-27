@@ -6,8 +6,6 @@
     holding buffers for the duration of a data transfer."
 )]
 
-use defmt::dbg;
-use defmt::debug;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
@@ -47,6 +45,8 @@ const SCREEN_HEIGHT: u32 = 64;
 const FLOW_FIELD_SIZE: usize = 512; // total amount of chunks, 32 x 16
 const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
 const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
+
+use meowbox::tasks::{left_button_event, right_button_event};
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -210,6 +210,17 @@ async fn main(spawner: Spawner) -> ! {
 
     let buzzer = Output::new(peripherals.GPIO7, Level::Low, OutputConfig::default());
 
+    // TODO: make this match up with the actual pin
+    let rotary_switch_left = Input::new(
+        peripherals.GPIO21,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
+    let rotary_switch_right = Input::new(
+        peripherals.GPIO47,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
     // inner scope is so that once the mutex is written to, the MutexGuard is dropped, thus the
     // Mutex is released
     {
@@ -310,52 +321,5 @@ async fn main(spawner: Spawner) -> ! {
         }
 
         Timer::after(Duration::from_millis(0)).await;
-    }
-}
-
-#[task]
-async fn left_button_event(
-    button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>,
-    led: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
-    buzzer: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
-) {
-    loop {
-        button.lock().await.as_mut().unwrap().wait_for_low().await;
-        led.lock().await.as_mut().unwrap().set_low();
-
-        // wait 200ms
-        for _ in 0..20 {
-            buzzer.lock().await.as_mut().unwrap().toggle();
-            Timer::after(Duration::from_millis(10)).await;
-        }
-
-        //Timer::after(Duration::from_millis(200)).await;
-        buzzer.lock().await.as_mut().unwrap().set_low();
-        led.lock().await.as_mut().unwrap().set_high();
-    }
-}
-
-#[task]
-async fn right_button_event(
-    button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>,
-    led: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
-    buzzer: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
-) {
-    // TODO: basically make the buzzer beeping a separate task, that
-    // waits for a message on a channel
-    loop {
-        button.lock().await.as_mut().unwrap().wait_for_low().await;
-        led.lock().await.as_mut().unwrap().set_low();
-
-        // wait 200ms and alternate buzzer
-        for _ in 0..200 {
-            buzzer.lock().await.as_mut().unwrap().toggle();
-            Timer::after(Duration::from_millis(1)).await;
-        }
-
-        //buzzer.lock().await.as_mut().unwrap().set_high();
-        //Timer::after(Duration::from_millis(200)).await;
-        buzzer.lock().await.as_mut().unwrap().set_low();
-        led.lock().await.as_mut().unwrap().set_high();
     }
 }
