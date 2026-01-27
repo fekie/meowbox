@@ -177,7 +177,11 @@ use esp_hal::gpio::Pull;
 //use embassy_sync::mutex::Mutex;
 
 type ButtonType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
-static BUTTON: ButtonType = Mutex::new(None);
+static RIGHT_BUTTON: ButtonType = Mutex::new(None);
+static LEFT_BUTTON: ButtonType = Mutex::new(None);
+
+type ButtonLEDType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
+static RIGHT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
 
 #[embassy_executor::task]
 async fn mytask() {
@@ -206,8 +210,31 @@ async fn main(spawner: Spawner) -> ! {
 
     info!("Embassy initialized!");
 
-    // TODO: Spawn some tasks
-    let a = spawner;
+    let right_button = Input::new(
+        peripherals.GPIO11,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
+    let left_button = Input::new(
+        peripherals.GPIO5,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
+    let mut right_button_light =
+        Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
+    let mut left_button_light =
+        Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
+
+    // inner scope is so that once the mutex is written to, the MutexGuard is dropped, thus the
+    // Mutex is released
+    {
+        *(RIGHT_BUTTON.lock().await) = Some(right_button);
+        *(LEFT_BUTTON.lock().await) = Some(left_button);
+        *(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
+    }
+
+    let _ = spawner.spawn(right_button_event(&RIGHT_BUTTON, &RIGHT_BUTTON_LED));
+    let _ = spawner.spawn(left_button_event(&LEFT_BUTTON));
 
     //a.spawn(mytask());
 
@@ -292,25 +319,8 @@ async fn main(spawner: Spawner) -> ! {
     }
 
     // we use a 220 resistor on this btw
-    let mut right_button_light =
-        Output::new(peripherals.GPIO12, Level::High, OutputConfig::default());
-    let mut left_button_light =
-        Output::new(peripherals.GPIO6, Level::High, OutputConfig::default());
+
     //let right_button_light = peripherals.GPIO12
-
-    let right_button = Input::new(
-        peripherals.GPIO11,
-        InputConfig::default().with_pull(Pull::Up),
-    );
-
-    // inner scope is so that once the mutex is written to, the MutexGuard is dropped, thus the
-    // Mutex is released
-    {
-        *(BUTTON.lock().await) = Some(right_button);
-    }
-
-    spawner.spawn(mytask());
-    spawner.spawn(mytask2(&BUTTON));
 
     //let mut buzzer = Output::new(peripherals.GPIO7, Level::High, OutputConfig::default());
 
@@ -319,48 +329,49 @@ async fn main(spawner: Spawner) -> ! {
     //let mut button: GpioPin<Input<PullUp>, 0> = io.pins.gpio0.into_pull_up_input();
 
     loop {
-        right_button_light.set_high();
-        left_button_light.set_high();
-        //buzzer.toggle();
+        // right_button_light.set_high();
+        // left_button_light.set_high();
+        // //buzzer.toggle();
 
-        display.clear(BinaryColor::Off).unwrap();
+        // display.clear(BinaryColor::Off).unwrap();
 
-        //let baseline = particles.first().unwrap().x();
+        // //let baseline = particles.first().unwrap().x();
 
-        for (i, particle) in particles.iter_mut().enumerate() {
-            Pixel(
-                Point::new(particle.x() as i32, particle.y() as i32),
-                BinaryColor::On,
-            )
-            .draw(&mut display)
-            .unwrap();
+        // for (i, particle) in particles.iter_mut().enumerate() {
+        //     Pixel(
+        //         Point::new(particle.x() as i32, particle.y() as i32),
+        //         BinaryColor::On,
+        //     )
+        //     .draw(&mut display)
+        //     .unwrap();
 
-            //let adjusted_angle = angle - ((i) as f32 * 0.20);
+        //     //let adjusted_angle = angle - ((i) as f32 * 0.20);
 
-            //let y = ((adjusted_angle.cos() / 2.0) + 0.5) * (SCREEN_HEIGHT as f32 - 1.0);
-            //info!("{}", y);
+        //     //let y = ((adjusted_angle.cos() / 2.0) + 0.5) * (SCREEN_HEIGHT as f32 - 1.0);
+        //     //info!("{}", y);
 
-            //particle.set_pos(particle.x() + 1.0, y);
+        //     //particle.set_pos(particle.x() + 1.0, y);
 
-            particle.update_velocity(&flow_field);
-            particle.update_position();
+        //     particle.update_velocity(&flow_field);
+        //     particle.update_position();
 
-            //info!("{} {}", particle.x(), particle.y())
-        }
+        //     //info!("{} {}", particle.x(), particle.y())
+        // }
 
-        display.flush().await.unwrap();
+        // display.flush().await.unwrap();
 
-        // make the angle be able to swing plus or minus pi/2
-        angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+        // // make the angle be able to swing plus or minus pi/2
+        // angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
 
-        for chunk in &mut flow_field.0 {
-            *chunk += angle;
-        }
+        // for chunk in &mut flow_field.0 {
+        //     *chunk += angle;
+        // }
 
         //i = (i + 1) % 5;
 
-        //Timer::after(Duration::from_secs(1)).await;
-        //Timer::after(Duration::from_millis(10)).await;
+        //\Timer::after(Duration::from_secs(1)).await;
+
+        Timer::after(Duration::from_millis(100)).await;
     }
 }
 
@@ -382,29 +393,42 @@ async fn main(spawner: Spawner) -> ! {
 // }
 
 #[task]
-async fn mytask2(button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>) {
+async fn left_button_event(
+    button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>,
+) {
     loop {
-        //button.lock().await.as_ref().unwrap().wait_for_low().await;
-
         button.lock().await.as_mut().unwrap().wait_for_low().await;
 
-        info!("Button pressed!");
+        info!("Left button pressed!");
 
         // 100 ms debounce
-        Timer::after(Duration::from_millis(100)).await;
-
-        // {
-        //     let mut led = led.lock().await;
-        //     led.set_high();
-        // }
-
-        // Timer::after(Duration::from_millis(500)).await;
-
-        // {
-        //     let mut led = led.lock().await;
-        //     led.set_low();
-        // }
-
-        // Timer::after(Duration::from_millis(500)).await;
+        Timer::after(Duration::from_millis(10)).await;
     }
+}
+
+#[task]
+async fn right_button_event(
+    button: &'static Mutex<CriticalSectionRawMutex, Option<Input<'static>>>,
+    led: &'static Mutex<CriticalSectionRawMutex, Option<Output<'static>>>,
+) {
+    loop {
+        if let Some(pin) = button.lock().await.as_mut() {
+            pin.wait_for_any_edge().await;
+            info!("Right button pressed!");
+            led.lock().await.as_mut().unwrap().set_low();
+            Timer::after(Duration::from_millis(1000)).await; // debounce
+            led.lock().await.as_mut().unwrap().set_high();
+        } else {
+            info!("wha");
+            Timer::after(Duration::from_millis(1000)).await;
+        }
+    }
+    // loop {
+    //     button.lock().await.as_mut().unwrap().wait_for_low().await;
+
+    //     info!("Right button pressed!");
+
+    //     // 100 ms debounce
+    //     Timer::after(Duration::from_millis(10)).await;
+    // }
 }
