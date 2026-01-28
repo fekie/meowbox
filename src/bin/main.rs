@@ -12,22 +12,13 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 
 use esp_hal::clock::CpuClock;
-use esp_hal::gpio::Input;
-use esp_hal::gpio::InputConfig;
-use esp_hal::timer::timg::TimerGroup;
 use esp_println as _;
 
-use esp_hal::i2c::master::Config as I2cConfig;
-use esp_hal::i2c::master::I2c;
 use esp_hal::rng::Rng;
-use esp_hal::time::Rate;
 
 use meowbox::hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED};
-use micromath::F32Ext;
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-
-use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
+use ssd1306::prelude::*;
 
 use embedded_graphics::{
     mono_font::{MonoTextStyleBuilder, ascii::FONT_6X10},
@@ -40,14 +31,6 @@ use embedded_graphics::{
 use core::f32::consts::PI;
 use noise_perlin::perlin_2d;
 
-use embassy_sync::mutex::Mutex;
-
-const SCREEN_WIDTH: u32 = 128;
-const SCREEN_HEIGHT: u32 = 64;
-const FLOW_FIELD_SIZE: usize = 512; // total amount of chunks, 32 x 16
-const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
-const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
-
 // use meowbox::tasks::{
 //     left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
 // };
@@ -58,120 +41,11 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-/// Represents a one pixel particle. Each setter will adjust the
-/// position so the particle wraps to the other side of the screen.
-#[derive(Debug, Default)]
-struct Particle {
-    x: f32,
-    y: f32,
-    velocity_x: f32,
-    velocity_y: f32,
-}
-
-impl Particle {
-    pub fn x(&self) -> f32 {
-        self.x
-    }
-
-    pub fn y(&self) -> f32 {
-        self.y
-    }
-
-    pub fn set_pos(&mut self, x: f32, y: f32) {
-        let x_adj = x % SCREEN_WIDTH as f32;
-        self.x = match x_adj.is_sign_positive() {
-            true => x_adj,
-            false => -x_adj,
-        };
-
-        let y_adj = y % SCREEN_HEIGHT as f32;
-        self.y = match y_adj.is_sign_positive() {
-            true => y_adj,
-            false => -y_adj,
-        };
-
-        //self.x = x % SCREEN_WIDTH as f32;
-        //self.y = y % SCREEN_HEIGHT as f32;
-    }
-
-    /// Updates its velocity according to what part
-    /// of the flow field it lands on
-    fn update_velocity(&mut self, flow_field: &FlowField) {
-        let flow_field_x = (self.x / FLOW_CHUNK_SIZE as f32) as usize;
-        let flow_field_y = (self.y / FLOW_CHUNK_SIZE as f32) as usize;
-        let flow_field_index =
-            (flow_field_x * (SCREEN_HEIGHT / (FLOW_CHUNK_SIZE)) as usize) + flow_field_y;
-        let new_velocity_angle = flow_field.0[flow_field_index];
-
-        self.velocity_x = new_velocity_angle.cos() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
-        self.velocity_y = new_velocity_angle.sin() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
-    }
-
-    /// Updates position according to velocity
-    fn update_position(&mut self) {
-        self.set_pos(self.x + self.velocity_x, self.y + self.velocity_y);
-    }
-}
-
-#[derive(Default)]
-struct World {
-    mode: Mode,
-}
-
-impl World {
-    fn new() -> Self {
-        World::default()
-    }
-
-    fn stop(&mut self) {
-        self.mode = Mode::Stopped;
-    }
-}
-
-#[derive(Default)]
-enum Mode {
-    #[default]
-    Stopped,
-    Nematode,
-}
-
-/// We have a 128x64 screen, so we
-/// will do a 8x4 grid flow field, where
-/// each one has an angle (each has the same magnitude).
-/// This array will contain row 0 first, then row 1, etc
-struct FlowField([f32; FLOW_FIELD_SIZE]);
-
-impl FlowField {
-    fn new() -> Self {
-        Self([0.0; 512])
-    }
-}
-
-/// Generates a value between 0.0 and 1.0
-fn random(rng: &Rng) -> f32 {
-    (rng.random() as u8) as f32 / 255.0
-}
-
-fn random_angle(rng: &Rng) -> f32 {
-    random(rng) * 2.0 * PI
-}
-
-use esp_hal::gpio::Level;
-use esp_hal::gpio::Output;
-use esp_hal::gpio::OutputConfig;
-
-use esp_hal::peripherals::Peripherals;
-use esp_println::print;
-
-use esp_rtos::embassy;
-
-use embassy_executor::task;
-
-use esp_hal::gpio::Pull;
-
 use meowbox::tasks::{
     left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
 };
+
+use meowbox::physics::{self, SCREEN_HEIGHT, SCREEN_WIDTH};
 
 //use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::mutex::Mutex;
@@ -190,7 +64,7 @@ async fn main(spawner: Spawner) -> ! {
 
     let mut display = hardware::init_peripherals(peripherals).await;
 
-    let mut rng = Rng::new();
+    let rng = Rng::new();
 
     info!("Embassy initialized!");
 
@@ -238,7 +112,6 @@ async fn main(spawner: Spawner) -> ! {
 
     // wait before and after initing display, or else it competes for power and stuff will fail
     Timer::after(Duration::from_millis(500)).await;
-    info!("aaaaa");
     //display.init().await.expect("failed to initialize display");
     loop {
         match display.init().await {
@@ -265,12 +138,12 @@ async fn main(spawner: Spawner) -> ! {
     //     .text_color(BinaryColor::On)
     //     .build();
 
-    let mut particles: [Particle; 5] = [
-        Particle::default(),
-        Particle::default(),
-        Particle::default(),
-        Particle::default(),
-        Particle::default(),
+    let mut particles: [physics::Particle; 5] = [
+        physics::Particle::default(),
+        physics::Particle::default(),
+        physics::Particle::default(),
+        physics::Particle::default(),
+        physics::Particle::default(),
     ];
 
     particles[1].set_pos(10.0, 10.0);
@@ -288,7 +161,7 @@ async fn main(spawner: Spawner) -> ! {
     // This array will contain row 0 first, then row 1, etc
     //let mut flow_field: [f32; FLOW_FIELD_SIZE] = [0.0; FLOW_FIELD_SIZE];
 
-    let mut flow_field = FlowField::new();
+    let mut flow_field = physics::FlowField::new();
 
     for (i, chunk) in flow_field.0.iter_mut().enumerate() {
         // a full rotation is 2pi, so we want to have each one generate
@@ -325,12 +198,8 @@ async fn main(spawner: Spawner) -> ! {
             info!("error on flush");
         }
 
-        //info!("aaaa");
-
-        //dbg!("aaaa");
-
         // make the angle be able to swing plus or minus pi/2
-        angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+        angle += ((physics::random(&rng) - 0.5) * 2.0) * PI / 2.0;
 
         for chunk in &mut flow_field.0 {
             *chunk += angle;
