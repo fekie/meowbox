@@ -1,5 +1,6 @@
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::mutex::Mutex;
+use embassy_time::{Duration, Timer};
 use esp_hal::gpio::InputConfig;
 use esp_hal::gpio::Level;
 use esp_hal::gpio::OutputConfig;
@@ -20,6 +21,8 @@ use esp_hal::timer::timg::TimerGroup;
 use esp_hal::i2c::master::Config as I2cConfig;
 use esp_hal::i2c::master::I2c;
 use esp_hal::time::Rate;
+
+use defmt::info;
 
 pub type ButtonType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
 pub static RIGHT_BUTTON: ButtonType = Mutex::new(None);
@@ -52,18 +55,20 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
     let pull_up_config = InputConfig::default().with_pull(Pull::Up);
     let output_config_default = OutputConfig::default();
 
-    let right_button = Input::new(peripherals.GPIO11, pull_up_config);
+    let right_button = Input::new(peripherals.GPIO14, pull_up_config);
 
-    let left_button = Input::new(peripherals.GPIO5, pull_up_config);
+    let left_button = Input::new(peripherals.GPIO4, pull_up_config);
 
-    let right_button_light = Output::new(peripherals.GPIO12, Level::High, output_config_default);
-    let left_button_light = Output::new(peripherals.GPIO6, Level::High, output_config_default);
+    let left_button_light = Output::new(peripherals.GPIO15, Level::High, output_config_default);
+    let right_button_light = Output::new(peripherals.GPIO9, Level::High, output_config_default);
 
-    let buzzer = Output::new(peripherals.GPIO7, Level::Low, output_config_default);
+    let buzzer = Output::new(peripherals.GPIO12, Level::Low, output_config_default);
 
-    let rotary_switch_left = Input::new(peripherals.GPIO1, pull_up_config);
+    let rotary_switch_left = Input::new(peripherals.GPIO16, pull_up_config);
 
-    let rotary_switch_right = Input::new(peripherals.GPIO3, pull_up_config);
+    let rotary_switch_right = Input::new(peripherals.GPIO10, pull_up_config);
+
+    //Timer::after(Duration::from_millis(1000)).await;
 
     {
         *(RIGHT_BUTTON.lock().await) = Some(right_button);
@@ -81,8 +86,8 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
         I2cConfig::default().with_frequency(Rate::from_khz(400)),
     )
     .unwrap()
-    .with_scl(peripherals.GPIO9)
-    .with_sda(peripherals.GPIO10)
+    .with_scl(peripherals.GPIO17)
+    .with_sda(peripherals.GPIO18)
     .into_async();
 
     let interface = I2CDisplayInterface::new(i2c_bus);

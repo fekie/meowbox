@@ -1,3 +1,4 @@
+use defmt::info;
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 
@@ -12,6 +13,8 @@ pub async fn left_button_event(
     loop {
         button.lock().await.as_mut().unwrap().wait_for_low().await;
         led.lock().await.as_mut().unwrap().set_low();
+
+        info!("left button triggered");
 
         // wait 200ms
         for _ in 0..20 {
@@ -36,6 +39,8 @@ pub async fn right_button_event(
     loop {
         button.lock().await.as_mut().unwrap().wait_for_low().await;
         led.lock().await.as_mut().unwrap().set_low();
+
+        info!("right button triggered");
 
         // wait 200ms and alternate buzzer
         for _ in 0..200 {

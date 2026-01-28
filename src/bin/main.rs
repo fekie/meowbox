@@ -47,9 +47,9 @@ const FLOW_FIELD_SIZE: usize = 512; // total amount of chunks, 32 x 16
 const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
 const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
 
-use meowbox::tasks::{
-    left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
-};
+// use meowbox::tasks::{
+//     left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
+// };
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -168,6 +168,10 @@ use embassy_executor::task;
 
 use esp_hal::gpio::Pull;
 
+use meowbox::tasks::{
+    left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
+};
+
 //use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 //use embassy_sync::mutex::Mutex;
 
@@ -180,23 +184,14 @@ async fn main(spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
+    // let timg0 = TimerGroup::new(peripherals.TIMG0);
+    // esp_rtos::start(timg0.timer0);
+
     let mut display = hardware::init_peripherals(peripherals).await;
 
     let mut rng = Rng::new();
 
     info!("Embassy initialized!");
-
-    // TODO: make this match up with the actual pin
-
-    // inner scope is so that once the mutex is written to, the MutexGuard is dropped, thus the
-    // Mutex is released
-    // {
-    //     *(RIGHT_BUTTON.lock().await) = Some(right_button);
-    //     *(LEFT_BUTTON.lock().await) = Some(left_button);
-    //     *(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
-    //     *(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
-    //     *(BUZZER.lock().await) = Some(buzzer);
-    // }
 
     let _ = spawner.spawn(right_button_event(
         &hardware::RIGHT_BUTTON,
@@ -240,27 +235,27 @@ async fn main(spawner: Spawner) -> ! {
     // > = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
     //     .into_buffered_graphics_mode();
 
-    display.init().await.expect("failed to initialize display");
+    //display.init().await.expect("failed to initialize display");
 
-    let text_style = MonoTextStyleBuilder::new()
-        .font(&FONT_6X10)
-        .text_color(BinaryColor::On)
-        .build();
+    // let text_style = MonoTextStyleBuilder::new()
+    //     .font(&FONT_6X10)
+    //     .text_color(BinaryColor::On)
+    //     .build();
 
-    let mut particles: [Particle; 5] = [
-        Particle::default(),
-        Particle::default(),
-        Particle::default(),
-        Particle::default(),
-        Particle::default(),
-    ];
+    // let mut particles: [Particle; 5] = [
+    //     Particle::default(),
+    //     Particle::default(),
+    //     Particle::default(),
+    //     Particle::default(),
+    //     Particle::default(),
+    // ];
 
-    particles[1].set_pos(10.0, 10.0);
-    particles[2].set_pos(20.0, 20.0);
-    particles[3].set_pos(30.0, 30.0);
-    particles[4].set_pos(127.0, 63.0);
+    // particles[1].set_pos(10.0, 10.0);
+    // particles[2].set_pos(20.0, 20.0);
+    // particles[3].set_pos(30.0, 30.0);
+    // particles[4].set_pos(127.0, 63.0);
 
-    display.flush().await.unwrap();
+    //display.flush().await.unwrap();
 
     let mut angle: f32 = 0.0;
 
@@ -284,30 +279,34 @@ async fn main(spawner: Spawner) -> ! {
         *chunk = perlin_angle;
     }
 
+    // loop {
+    //     display.clear(BinaryColor::Off).unwrap();
+
+    //     for (i, particle) in particles.iter_mut().enumerate() {
+    //         Pixel(
+    //             Point::new(particle.x() as i32, particle.y() as i32),
+    //             BinaryColor::On,
+    //         )
+    //         .draw(&mut display)
+    //         .unwrap();
+
+    //         particle.update_velocity(&flow_field);
+    //         particle.update_position();
+    //     }
+
+    //     display.flush().await.unwrap();
+
+    //     // make the angle be able to swing plus or minus pi/2
+    //     angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+
+    //     for chunk in &mut flow_field.0 {
+    //         *chunk += angle;
+    //     }
+
+    //     Timer::after(Duration::from_millis(0)).await;
+    // }
+
     loop {
-        display.clear(BinaryColor::Off).unwrap();
-
-        for (i, particle) in particles.iter_mut().enumerate() {
-            Pixel(
-                Point::new(particle.x() as i32, particle.y() as i32),
-                BinaryColor::On,
-            )
-            .draw(&mut display)
-            .unwrap();
-
-            particle.update_velocity(&flow_field);
-            particle.update_position();
-        }
-
-        display.flush().await.unwrap();
-
-        // make the angle be able to swing plus or minus pi/2
-        angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
-
-        for chunk in &mut flow_field.0 {
-            *chunk += angle;
-        }
-
-        Timer::after(Duration::from_millis(0)).await;
+        Timer::after(Duration::from_millis(100)).await;
     }
 }
