@@ -8,14 +8,6 @@ use esp_hal::gpio::Pull;
 use esp_hal::gpio::{Input, Output};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 
-use embedded_graphics::{
-    mono_font::{MonoTextStyleBuilder, ascii::FONT_6X10},
-    pixelcolor::BinaryColor,
-    prelude::Point,
-    prelude::*,
-    text::{Baseline, Text},
-};
-
 use esp_hal::timer::timg::TimerGroup;
 
 use esp_hal::i2c::master::Config as I2cConfig;

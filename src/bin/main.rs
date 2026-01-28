@@ -31,6 +31,8 @@ use embedded_graphics::{
 use core::f32::consts::PI;
 use noise_perlin::perlin_2d;
 
+use embassy_sync::signal::Signal;
+
 // use meowbox::tasks::{
 //     left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
 // };
@@ -42,7 +44,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 use meowbox::tasks::{
-    left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
+    left_button_event, play_sequence_listener, right_button_event, rotary_switch_left_event,
+    rotary_switch_right_event,
 };
 
 use meowbox::physics::{self, SCREEN_HEIGHT, SCREEN_WIDTH};
@@ -90,6 +93,8 @@ async fn main(spawner: Spawner) -> ! {
         &hardware::RIGHT_BUTTON_LED,
         &hardware::BUZZER,
     ));
+
+    let _ = spawner.spawn(play_sequence_listener(&hardware::BUZZER));
 
     // let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
     //     peripherals.I2C0,
