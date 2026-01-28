@@ -41,7 +41,7 @@ pub static ROTARY_SWITCH_RIGHT: RotarySwitchType = Mutex::new(None);
 
 use esp_hal::peripherals::Peripherals;
 
-type Display = Ssd1306Async<
+pub type Display = Ssd1306Async<
     I2CInterface<I2c<'static, esp_hal::Async>>,
     DisplaySize128x64,
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
@@ -52,6 +52,8 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
 
+    Timer::after(Duration::from_millis(500)).await;
+
     let pull_up_config = InputConfig::default().with_pull(Pull::Up);
     let output_config_default = OutputConfig::default();
 
@@ -59,8 +61,8 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
 
     let left_button = Input::new(peripherals.GPIO4, pull_up_config);
 
-    let left_button_light = Output::new(peripherals.GPIO15, Level::High, output_config_default);
-    let right_button_light = Output::new(peripherals.GPIO9, Level::High, output_config_default);
+    let left_button_light = Output::new(peripherals.GPIO15, Level::Low, output_config_default);
+    let right_button_light = Output::new(peripherals.GPIO9, Level::Low, output_config_default);
 
     let buzzer = Output::new(peripherals.GPIO12, Level::Low, output_config_default);
 
@@ -68,7 +70,7 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
 
     let rotary_switch_right = Input::new(peripherals.GPIO10, pull_up_config);
 
-    //Timer::after(Duration::from_millis(1000)).await;
+    Timer::after(Duration::from_millis(500)).await;
 
     {
         *(RIGHT_BUTTON.lock().await) = Some(right_button);

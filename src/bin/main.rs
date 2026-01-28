@@ -7,6 +7,7 @@
 )]
 
 use defmt::info;
+use defmt::{dbg, error};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 
@@ -21,7 +22,7 @@ use esp_hal::i2c::master::I2c;
 use esp_hal::rng::Rng;
 use esp_hal::time::Rate;
 
-use meowbox::hardware;
+use meowbox::hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED};
 use micromath::F32Ext;
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -235,25 +236,47 @@ async fn main(spawner: Spawner) -> ! {
     // > = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
     //     .into_buffered_graphics_mode();
 
+    // wait before and after initing display, or else it competes for power and stuff will fail
+    Timer::after(Duration::from_millis(500)).await;
+    info!("aaaaa");
     //display.init().await.expect("failed to initialize display");
+    loop {
+        match display.init().await {
+            Ok(_) => {
+                info!("display initialized!");
+                break;
+            }
+            Err(e) => {
+                error!("display init failed");
+                Timer::after(Duration::from_millis(200)).await;
+            }
+        }
+    }
+
+    //info!("display initialized!");
+    Timer::after(Duration::from_millis(500)).await;
+
+    // after this, turn on button leds
+    LEFT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
+    RIGHT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
 
     // let text_style = MonoTextStyleBuilder::new()
     //     .font(&FONT_6X10)
     //     .text_color(BinaryColor::On)
     //     .build();
 
-    // let mut particles: [Particle; 5] = [
-    //     Particle::default(),
-    //     Particle::default(),
-    //     Particle::default(),
-    //     Particle::default(),
-    //     Particle::default(),
-    // ];
+    let mut particles: [Particle; 5] = [
+        Particle::default(),
+        Particle::default(),
+        Particle::default(),
+        Particle::default(),
+        Particle::default(),
+    ];
 
-    // particles[1].set_pos(10.0, 10.0);
-    // particles[2].set_pos(20.0, 20.0);
-    // particles[3].set_pos(30.0, 30.0);
-    // particles[4].set_pos(127.0, 63.0);
+    particles[1].set_pos(10.0, 10.0);
+    particles[2].set_pos(20.0, 20.0);
+    particles[3].set_pos(30.0, 30.0);
+    particles[4].set_pos(127.0, 63.0);
 
     //display.flush().await.unwrap();
 
@@ -279,32 +302,42 @@ async fn main(spawner: Spawner) -> ! {
         *chunk = perlin_angle;
     }
 
-    // loop {
-    //     display.clear(BinaryColor::Off).unwrap();
+    loop {
+        if let Err(e) = display.clear(BinaryColor::Off) {
+            info!("error on clear");
+        }
 
-    //     for (i, particle) in particles.iter_mut().enumerate() {
-    //         Pixel(
-    //             Point::new(particle.x() as i32, particle.y() as i32),
-    //             BinaryColor::On,
-    //         )
-    //         .draw(&mut display)
-    //         .unwrap();
+        for (i, particle) in particles.iter_mut().enumerate() {
+            if let Err(e) = Pixel(
+                Point::new(particle.x() as i32, particle.y() as i32),
+                BinaryColor::On,
+            )
+            .draw(&mut display)
+            {
+                info!("error on draw");
+            }
 
-    //         particle.update_velocity(&flow_field);
-    //         particle.update_position();
-    //     }
+            particle.update_velocity(&flow_field);
+            particle.update_position();
+        }
 
-    //     display.flush().await.unwrap();
+        if let Err(e) = display.flush().await {
+            info!("error on flush");
+        }
 
-    //     // make the angle be able to swing plus or minus pi/2
-    //     angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+        //info!("aaaa");
 
-    //     for chunk in &mut flow_field.0 {
-    //         *chunk += angle;
-    //     }
+        //dbg!("aaaa");
 
-    //     Timer::after(Duration::from_millis(0)).await;
-    // }
+        // make the angle be able to swing plus or minus pi/2
+        angle += ((random(&rng) - 0.5) * 2.0) * PI / 2.0;
+
+        for chunk in &mut flow_field.0 {
+            *chunk += angle;
+        }
+
+        Timer::after(Duration::from_millis(0)).await;
+    }
 
     loop {
         Timer::after(Duration::from_millis(100)).await;
