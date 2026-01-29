@@ -27,9 +27,26 @@ pub static LEFT_BUTTON_LED: ButtonLEDType = Mutex::new(None);
 pub type BuzzerType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
 pub static BUZZER: BuzzerType = Mutex::new(None);
 
+pub type PBuzzerType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
+pub static PBUZZER_TOP_LEFT: PBuzzerType = Mutex::new(None);
+pub static PBUZZER_TOP_RIGHT: PBuzzerType = Mutex::new(None);
+pub static PBUZZER_BOTTOM_LEFT: PBuzzerType = Mutex::new(None);
+pub static PBUZZER_BOTTOM_RIGHT: PBuzzerType = Mutex::new(None);
+
 pub type RotarySwitchType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
 pub static ROTARY_SWITCH_LEFT: RotarySwitchType = Mutex::new(None);
 pub static ROTARY_SWITCH_RIGHT: RotarySwitchType = Mutex::new(None);
+
+pub type RotaryLineType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
+pub static ROTARY_RIGHT_A: RotaryLineType = Mutex::new(None);
+pub static ROTARY_RIGHT_B: RotaryLineType = Mutex::new(None);
+
+pub type LEDType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
+pub static RED_LED: LEDType = Mutex::new(None);
+pub static GREEN_LED: LEDType = Mutex::new(None);
+pub static BLUE_LED: LEDType = Mutex::new(None);
+pub static YELLOW_LED: LEDType = Mutex::new(None);
+pub static WHITE_LED: LEDType = Mutex::new(None);
 
 use esp_hal::peripherals::Peripherals;
 
@@ -68,10 +85,10 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
     let yellow_led = Output::new(peripherals.GPIO11, Level::Low, output_config_default);
     let white_led = Output::new(peripherals.GPIO7, Level::Low, output_config_default);
 
-    let buzzer_top_left = Output::new(peripherals.GPIO1, Level::High, output_config_default);
-    let buzzer_top_right = Output::new(peripherals.GPIO20, Level::Low, output_config_default);
-    let buzzer_bottom_left = Output::new(peripherals.GPIO5, Level::Low, output_config_default);
-    let buzzer_bottom_right = Output::new(peripherals.GPIO13, Level::Low, output_config_default);
+    let pbuzzer_top_left = Output::new(peripherals.GPIO1, Level::High, output_config_default);
+    let pbuzzer_top_right = Output::new(peripherals.GPIO20, Level::Low, output_config_default);
+    let pbuzzer_bottom_left = Output::new(peripherals.GPIO5, Level::Low, output_config_default);
+    let pbuzzer_bottom_right = Output::new(peripherals.GPIO13, Level::Low, output_config_default);
 
     Timer::after(Duration::from_millis(500)).await;
 
@@ -88,6 +105,18 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
         *(BUZZER.lock().await) = Some(buzzer);
         *(ROTARY_SWITCH_LEFT.lock().await) = Some(rotary_switch_left);
         *(ROTARY_SWITCH_RIGHT.lock().await) = Some(rotary_switch_right);
+        *(PBUZZER_TOP_LEFT.lock().await) = Some(pbuzzer_top_left);
+        *(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
+        *(PBUZZER_BOTTOM_LEFT.lock().await) = Some(pbuzzer_bottom_left);
+        *(PBUZZER_BOTTOM_RIGHT.lock().await) = Some(pbuzzer_bottom_right);
+        *(ROTARY_RIGHT_A.lock().await) = Some(rotary_right_a);
+        *(ROTARY_RIGHT_B.lock().await) = Some(rotary_right_b);
+
+        *(RED_LED.lock().await) = Some(red_led);
+        *(GREEN_LED.lock().await) = Some(green_led);
+        *(BLUE_LED.lock().await) = Some(blue_led);
+        *(YELLOW_LED.lock().await) = Some(yellow_led);
+        *(WHITE_LED.lock().await) = Some(white_led);
     }
 
     let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(

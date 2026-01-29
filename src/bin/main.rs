@@ -181,6 +181,9 @@ async fn main(spawner: Spawner) -> ! {
     }
 
     loop {
+        // TODO: run the routine here, and after each one finishes it goes and checks
+        // what the next routine is needed to run
+
         if let Err(e) = display.clear(BinaryColor::Off) {
             info!("error on clear");
         }
