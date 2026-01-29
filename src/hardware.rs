@@ -62,6 +62,22 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
 
     let rotary_switch_right = Input::new(peripherals.GPIO10, pull_up_config);
 
+    let red_led = Output::new(peripherals.GPIO6, Level::Low, output_config_default);
+    let green_led = Output::new(peripherals.GPIO2, Level::Low, output_config_default);
+    let blue_led = Output::new(peripherals.GPIO21, Level::Low, output_config_default);
+    let yellow_led = Output::new(peripherals.GPIO11, Level::Low, output_config_default);
+    let white_led = Output::new(peripherals.GPIO7, Level::Low, output_config_default);
+
+    let buzzer_top_left = Output::new(peripherals.GPIO1, Level::High, output_config_default);
+    let buzzer_top_right = Output::new(peripherals.GPIO20, Level::Low, output_config_default);
+    let buzzer_bottom_left = Output::new(peripherals.GPIO5, Level::Low, output_config_default);
+    let buzzer_bottom_right = Output::new(peripherals.GPIO13, Level::Low, output_config_default);
+
+    Timer::after(Duration::from_millis(500)).await;
+
+    let rotary_right_a = Input::new(peripherals.GPIO3, pull_up_config);
+    let rotary_right_b = Input::new(peripherals.GPIO46, pull_up_config);
+
     Timer::after(Duration::from_millis(500)).await;
 
     {

@@ -112,7 +112,7 @@ pub async fn rotary_switch_right_event(
         led.lock().await.as_mut().unwrap().set_low();
 
         // play simple tone
-        BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);
+        BUZZER_SIGNAL.signal(BuzzerSequence::Intermittent5ms2000ms);
 
         Timer::after(Duration::from_millis(200)).await;
 
