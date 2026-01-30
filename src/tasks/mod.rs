@@ -2,12 +2,17 @@ use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 
+use crate::hardware::{LED_ARRAY, LEDType};
+
 use super::hardware;
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 
+use heapless::{Vec, vec};
+
 pub static BUZZER_SIGNAL: Signal<CriticalSectionRawMutex, BuzzerSequence> = Signal::new();
+pub static LED_ROTATION_SIGNAL: Signal<CriticalSectionRawMutex, LEDRotationParams> = Signal::new();
 
 pub enum BuzzerSequence {
     SimpleTone200ms,
@@ -82,6 +87,10 @@ pub async fn rotary_switch_left_event(
             .unwrap()
             .wait_for_falling_edge()
             .await;
+
+        let params = LEDRotationParams::default();
+        LED_ROTATION_SIGNAL.signal(params);
+
         led.lock().await.as_mut().unwrap().set_low();
 
         Timer::after(Duration::from_millis(200)).await;
@@ -158,5 +167,108 @@ async fn execute_sequence(buzzer: &'static hardware::BuzzerType, sequence: &Buzz
 
             buzzer.lock().await.as_mut().unwrap().set_low();
         }
+    }
+}
+
+/// Specifies the parameters for an led rotation. You can specify
+/// a pattern of up to 20 LEDs. You can also specify the amount of cycles
+/// to do.
+
+pub struct LEDRotationParams {
+    /// LED lightup pattern order.
+    pub selection: Vec<LEDSelect, 20>,
+    /// Amount of cycles of this to do.
+    pub cycles: u64,
+    /// Amount of time one LED stays on, in ms.
+    pub interval: u64,
+}
+
+impl Default for LEDRotationParams {
+    fn default() -> Self {
+        let mut selection = Vec::new();
+        selection.push(LEDSelect::RED).unwrap();
+        selection.push(LEDSelect::GREEN).unwrap();
+        selection.push(LEDSelect::BLUE).unwrap();
+        selection.push(LEDSelect::YELLOW).unwrap();
+        selection.push(LEDSelect::WHITE).unwrap();
+
+        LEDRotationParams {
+            selection,
+            cycles: 5,
+            interval: 80,
+        }
+    }
+}
+
+#[repr(usize)]
+#[derive(Clone, Copy, Debug)]
+pub enum LEDSelect {
+    RED = 0,
+    GREEN = 1,
+    BLUE = 2,
+    YELLOW = 3,
+    WHITE = 4,
+}
+
+#[task]
+pub async fn led_rotation() {
+    loop {
+        let params = LED_ROTATION_SIGNAL.wait().await;
+
+        all_leds_off().await;
+
+        // save the last index, so we can wait half the interval time
+        // before turning it off
+        let mut last_i: Option<usize> = None;
+
+        for _ in 0..params.cycles {
+            for led_select in &params.selection {
+                let i: usize = *led_select as usize;
+                LED_ARRAY[i].lock().await.as_mut().unwrap().set_high();
+
+                let half_time = params.interval / 2;
+
+                // wait half the interval to turn the previous one off
+                Timer::after(Duration::from_millis(half_time)).await;
+
+                if let Some(last) = last_i {
+                    LED_ARRAY[last].lock().await.as_mut().unwrap().set_low();
+                }
+
+                last_i = Some(i);
+
+                Timer::after(Duration::from_millis(half_time)).await;
+            }
+        }
+
+        all_leds_off().await;
+    }
+}
+
+// #[task]
+// async fn full_led_rotation(
+//     red_led: &'static hardware::LEDType,
+//     green_led: &'static hardware::LEDType,
+//     blue_led: &'static hardware::LEDType,
+//     yellow_led: &'static hardware::LEDType,
+//     white_led: &'static hardware::LEDType,
+//     cycles: u16,
+// ) {
+//     // make sure all of them are set low first
+//     red_led.lock().await.as_mut().unwrap().set_low();
+//     green_led.lock().await.as_mut().unwrap().set_low();
+//     blue_led.lock().await.as_mut().unwrap().set_low();
+//     yellow_led.lock().await.as_mut().unwrap().set_low();
+//     white_led.lock().await.as_mut().unwrap().set_low();
+
+//     for _ in 0..cycles {
+//         red_led.lock().await.as_mut().unwrap().set_high();
+//     }
+// }
+
+pub async fn all_leds_off() {
+    // set all leds to off
+    for led in LED_ARRAY {
+        led.lock().await.as_mut().unwrap().set_low();
     }
 }

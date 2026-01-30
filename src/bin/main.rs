@@ -16,7 +16,11 @@ use esp_println as _;
 
 use esp_hal::rng::Rng;
 
-use meowbox::hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED};
+use heapless::Vec;
+use meowbox::hardware::{
+    self, BLUE_LED, GREEN_LED, LEDType, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED, WHITE_LED,
+    YELLOW_LED,
+};
 
 use ssd1306::prelude::*;
 
@@ -44,8 +48,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 use meowbox::tasks::{
-    left_button_event, play_sequence_listener, right_button_event, rotary_switch_left_event,
-    rotary_switch_right_event,
+    led_rotation, left_button_event, play_sequence_listener, right_button_event,
+    rotary_switch_left_event, rotary_switch_right_event,
 };
 
 use meowbox::physics::{self, SCREEN_HEIGHT, SCREEN_WIDTH};
@@ -95,6 +99,10 @@ async fn main(spawner: Spawner) -> ! {
     ));
 
     let _ = spawner.spawn(play_sequence_listener(&hardware::BUZZER));
+
+    let _ = spawner.spawn(led_rotation());
+
+    //WHITE_LED.lock().await.as_mut().unwrap().set_high();
 
     // let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
     //     peripherals.I2C0,
@@ -213,7 +221,7 @@ async fn main(spawner: Spawner) -> ! {
             *chunk += angle;
         }
 
-        Timer::after(Duration::from_millis(0)).await;
+        Timer::after(Duration::from_millis(1)).await;
     }
 
     loop {

@@ -48,6 +48,9 @@ pub static BLUE_LED: LEDType = Mutex::new(None);
 pub static YELLOW_LED: LEDType = Mutex::new(None);
 pub static WHITE_LED: LEDType = Mutex::new(None);
 
+pub static LED_ARRAY: [&'static LEDType; 5] =
+    [&RED_LED, &GREEN_LED, &BLUE_LED, &YELLOW_LED, &WHITE_LED];
+
 use esp_hal::peripherals::Peripherals;
 
 pub type Display = Ssd1306Async<
