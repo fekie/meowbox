@@ -49,7 +49,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 use meowbox::tasks::{
     led_rotation, left_button_event, play_sequence_listener, right_button_event,
-    rotary_switch_left_event, rotary_switch_right_event,
+    right_rotary_rotation_watcher, rotary_switch_left_event, rotary_switch_right_event,
 };
 
 use meowbox::physics::{self, SCREEN_HEIGHT, SCREEN_WIDTH};
@@ -101,6 +101,8 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(play_sequence_listener(&hardware::BUZZER));
 
     let _ = spawner.spawn(led_rotation());
+
+    let _ = spawner.spawn(right_rotary_rotation_watcher());
 
     //WHITE_LED.lock().await.as_mut().unwrap().set_high();
 

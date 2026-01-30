@@ -2,17 +2,24 @@ use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 
-use crate::hardware::{LED_ARRAY, LEDType};
+use crate::hardware::{
+    BLUE_LED, GREEN_LED, LED_ARRAY, LEDType, RED_LED, ROTARY_RIGHT_A, ROTARY_RIGHT_B,
+};
 
 use super::hardware;
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
 use heapless::{Vec, vec};
 
 pub static BUZZER_SIGNAL: Signal<CriticalSectionRawMutex, BuzzerSequence> = Signal::new();
 pub static LED_ROTATION_SIGNAL: Signal<CriticalSectionRawMutex, LEDRotationParams> = Signal::new();
+
+/// A value comes into the channel when
+pub static RIGHT_CLOCKWISE_ROTATION: Channel<CriticalSectionRawMutex, (), 64> = Channel::new();
+pub static RIGHT_COUNTER_CLOCKWISE_ROTATION: Channel<CriticalSectionRawMutex, (), 64> =
+    Channel::new();
 
 pub enum BuzzerSequence {
     SimpleTone200ms,
@@ -242,6 +249,46 @@ pub async fn led_rotation() {
         }
 
         all_leds_off().await;
+    }
+}
+
+#[task]
+pub async fn right_rotary_rotation_watcher() {
+    loop {
+        // We check rotation by waiting for the A signal to go high.
+        // If B is high when A is high, then we know B came first and we
+        // went clockwise
+        ROTARY_RIGHT_A
+            .lock()
+            .await
+            .as_mut()
+            .unwrap()
+            .wait_for_rising_edge()
+            .await;
+
+        match ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_high() {
+            // CW rotation
+            true => {
+                GREEN_LED.lock().await.as_mut().unwrap().toggle();
+            }
+            // CCW rotation
+            false => {
+                BLUE_LED.lock().await.as_mut().unwrap().toggle();
+            }
+        }
+
+        loop {
+            let a_is_low = ROTARY_RIGHT_A.lock().await.as_mut().unwrap().is_low();
+            let b_is_low = ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_low();
+
+            if (a_is_low && b_is_low) {
+                break;
+            }
+
+            Timer::after(Duration::from_micros(100)).await;
+        }
+
+        // wait until both lines are low
     }
 }
 
