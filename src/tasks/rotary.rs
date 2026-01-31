@@ -1,15 +1,19 @@
 use defmt::{error, info, warn};
 use embassy_executor::task;
-use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal,
-};
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio::Input;
 use heapless::Vec;
-use rotary_encoder_embedded::{Direction, quadrature::QuadratureTableMode};
+use rotary_encoder_embedded::{
+    Direction, quadrature::QuadratureTableMode,
+};
 
-use super::{BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL, LEDRotationParams, hardware};
-use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
+use super::{
+    BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL,
+    LEDRotationParams, hardware,
+};
+use crate::hardware::{
+    BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
+};
 
 #[task]
 pub async fn rotary_switch_left_event(
@@ -83,7 +87,8 @@ pub async fn left_rotary_rotation_watcher(
 
     loop {
         // whenever this happens, update the state of the encoder
-        let dir = raw_encoder.update(left_rotary_b.is_low(), left_rotary_a.is_low());
+        let dir = raw_encoder
+            .update(left_rotary_b.is_low(), left_rotary_a.is_low());
 
         match dir {
             Direction::Clockwise => {
@@ -112,7 +117,8 @@ pub async fn right_rotary_rotation_watcher(
 
     loop {
         // whenever this happens, update the state of the encoder
-        let dir = raw_encoder.update(right_rotary_b.is_low(), right_rotary_a.is_low());
+        let dir = raw_encoder
+            .update(right_rotary_b.is_low(), right_rotary_a.is_low());
 
         match dir {
             Direction::Clockwise => {

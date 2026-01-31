@@ -37,9 +37,10 @@ pub type RotarySwitchType =
 pub static ROTARY_SWITCH_LEFT: RotarySwitchType = Mutex::new(None);
 pub static ROTARY_SWITCH_RIGHT: RotarySwitchType = Mutex::new(None);
 
-//pub type RotaryLineType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
-//pub static ROTARY_RIGHT_A: RotaryLineType = Mutex::new(None);
-//pub static ROTARY_RIGHT_B: RotaryLineType = Mutex::new(None);
+//pub type RotaryLineType = Mutex<CriticalSectionRawMutex,
+// Option<Input<'static>>>; pub static ROTARY_RIGHT_A: RotaryLineType
+// = Mutex::new(None); pub static ROTARY_RIGHT_B: RotaryLineType =
+// Mutex::new(None);
 
 pub type LEDType =
     Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
@@ -68,7 +69,8 @@ pub struct NonMutexPeripherals {
     pub right_rotary_b: Input<'static>,
 }
 
-/// Initializes peripherals and assigns them to their respective mutexes.
+/// Initializes peripherals and assigns them to their respective
+/// mutexes.
 pub async fn init_peripherals(
     peripherals: Peripherals,
 ) -> NonMutexPeripherals {

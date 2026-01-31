@@ -50,17 +50,23 @@ impl Particle {
     pub fn update_velocity(&mut self, flow_field: &FlowField) {
         let flow_field_x = (self.x / FLOW_CHUNK_SIZE as f32) as usize;
         let flow_field_y = (self.y / FLOW_CHUNK_SIZE as f32) as usize;
-        let flow_field_index =
-            (flow_field_x * (SCREEN_HEIGHT / (FLOW_CHUNK_SIZE)) as usize) + flow_field_y;
+        let flow_field_index = (flow_field_x
+            * (SCREEN_HEIGHT / (FLOW_CHUNK_SIZE)) as usize)
+            + flow_field_y;
         let new_velocity_angle = flow_field.0[flow_field_index];
 
-        self.velocity_x = new_velocity_angle.cos() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
-        self.velocity_y = new_velocity_angle.sin() * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
+        self.velocity_x = new_velocity_angle.cos()
+            * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
+        self.velocity_y = new_velocity_angle.sin()
+            * FLOW_FORCE_MAGNITUDE_MULTIPLIER;
     }
 
     /// Updates position according to velocity
     pub fn update_position(&mut self) {
-        self.set_pos(self.x + self.velocity_x, self.y + self.velocity_y);
+        self.set_pos(
+            self.x + self.velocity_x,
+            self.y + self.velocity_y,
+        );
     }
 }
 
