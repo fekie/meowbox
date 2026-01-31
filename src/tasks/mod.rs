@@ -254,58 +254,6 @@ pub async fn led_rotation() {
     }
 }
 
-/// Encodes for the current state of the A and B lines. This makes
-/// it easier to "traverse" the line signal, as each option only has
-/// one valid "path" it can take.
-#[derive(Copy, Clone, Debug)]
-enum GrayState {
-    AB00, // A=0, B=0
-    AB01, // A=0, B=1
-    AB11, // A=1, B=1
-    AB10, // A=1, B=0
-}
-
-// impl GrayState {
-//     /// Creates a GrayState by polling the right rotary encoder's pins
-//     async fn new_right() -> Self {
-//         let a = ROTARY_RIGHT_A.lock().await.as_ref().unwrap().is_high();
-//         let b = ROTARY_RIGHT_B.lock().await.as_ref().unwrap().is_high();
-
-//         match (a, b) {
-//             (false, false) => GrayState::AB00,
-//             (false, true) => GrayState::AB01,
-//             (true, true) => GrayState::AB11,
-//             (true, false) => GrayState::AB10,
-//         }
-//     }
-// }
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum MicroRotation {
-    Clockwise,
-    CounterClockwise,
-    None, // bounce / illegal / no movement
-}
-
-fn decode_transition(from: GrayState, to: GrayState) -> MicroRotation {
-    match (from, to) {
-        // clockwise (B leads A)
-        (GrayState::AB00, GrayState::AB01) => MicroRotation::Clockwise,
-        (GrayState::AB01, GrayState::AB11) => MicroRotation::Clockwise,
-        (GrayState::AB11, GrayState::AB10) => MicroRotation::Clockwise,
-        (GrayState::AB10, GrayState::AB00) => MicroRotation::Clockwise,
-
-        // counter-clockwise
-        (GrayState::AB00, GrayState::AB10) => MicroRotation::CounterClockwise,
-        (GrayState::AB10, GrayState::AB11) => MicroRotation::CounterClockwise,
-        (GrayState::AB11, GrayState::AB01) => MicroRotation::CounterClockwise,
-        (GrayState::AB01, GrayState::AB00) => MicroRotation::CounterClockwise,
-
-        // bounce, illegal, or no change
-        _ => MicroRotation::None,
-    }
-}
-
 #[task]
 pub async fn left_rotary_rotation_watcher(
     left_rotary_a: Input<'static>,
