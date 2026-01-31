@@ -59,16 +59,16 @@ pub type Display = Ssd1306Async<
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
 >;
 
+pub struct NonMutexPeripherals {
+    pub display: Display,
+    pub left_rotary_a: Input<'static>,
+    pub left_rotary_b: Input<'static>,
+    pub right_rotary_a: Input<'static>,
+    pub right_rotary_b: Input<'static>,
+}
+
 /// Initializes peripherals and assigns them to their respective mutexes.
-pub async fn init_peripherals(
-    peripherals: Peripherals,
-) -> (
-    Display,
-    Input<'static>,
-    Input<'static>,
-    Input<'static>,
-    Input<'static>,
-) {
+pub async fn init_peripherals(peripherals: Peripherals) -> NonMutexPeripherals {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
 
@@ -106,8 +106,8 @@ pub async fn init_peripherals(
     let left_rotary_a = Input::new(peripherals.GPIO42, pull_up_config);
     let left_rotary_b = Input::new(peripherals.GPIO41, pull_up_config);
 
-    let rotary_right_a = Input::new(peripherals.GPIO3, pull_up_config);
-    let rotary_right_b = Input::new(peripherals.GPIO46, pull_up_config);
+    let right_rotary_a = Input::new(peripherals.GPIO3, pull_up_config);
+    let right_rotary_b = Input::new(peripherals.GPIO46, pull_up_config);
 
     Timer::after(Duration::from_millis(500)).await;
 
@@ -123,8 +123,6 @@ pub async fn init_peripherals(
         *(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
         *(PBUZZER_BOTTOM_LEFT.lock().await) = Some(pbuzzer_bottom_left);
         *(PBUZZER_BOTTOM_RIGHT.lock().await) = Some(pbuzzer_bottom_right);
-        //*(ROTARY_RIGHT_A.lock().await) = Some(rotary_right_a);
-        //*(ROTARY_RIGHT_B.lock().await) = Some(rotary_right_b);
 
         *(RED_LED.lock().await) = Some(red_led);
         *(GREEN_LED.lock().await) = Some(green_led);
@@ -148,11 +146,11 @@ pub async fn init_peripherals(
     let display = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    (
+    NonMutexPeripherals {
         display,
         left_rotary_a,
         left_rotary_b,
-        rotary_right_a,
-        rotary_right_b,
-    )
+        right_rotary_a,
+        right_rotary_b,
+    }
 }

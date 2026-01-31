@@ -6,8 +6,8 @@
     holding buffers for the duration of a data transfer."
 )]
 
+use defmt::error;
 use defmt::info;
-use defmt::{dbg, error};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 
@@ -16,11 +16,7 @@ use esp_println as _;
 
 use esp_hal::rng::Rng;
 
-use heapless::Vec;
-use meowbox::hardware::{
-    self, BLUE_LED, GREEN_LED, LEDType, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED, WHITE_LED,
-    YELLOW_LED,
-};
+use meowbox::hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED};
 
 use ssd1306::prelude::*;
 
@@ -35,12 +31,6 @@ use embedded_graphics::{
 use core::f32::consts::PI;
 use noise_perlin::perlin_2d;
 
-use embassy_sync::signal::Signal;
-
-// use meowbox::tasks::{
-//     left_button_event, right_button_event, rotary_switch_left_event, rotary_switch_right_event,
-// };
-
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::info!("{:?}", info);
@@ -53,10 +43,7 @@ use meowbox::tasks::{
     rotary_switch_right_event,
 };
 
-use meowbox::physics::{self, SCREEN_HEIGHT, SCREEN_WIDTH};
-
-//use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-//use embassy_sync::mutex::Mutex;
+use meowbox::physics::{self, SCREEN_WIDTH};
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -67,11 +54,8 @@ async fn main(spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    // let timg0 = TimerGroup::new(peripherals.TIMG0);
-    // esp_rtos::start(timg0.timer0);
-
-    let (mut display, left_rotary_a, left_rotary_b, right_rotary_a, right_rotary_b) =
-        hardware::init_peripherals(peripherals).await;
+    let non_mutex_peripherals = hardware::init_peripherals(peripherals).await;
+    let mut display = non_mutex_peripherals.display;
 
     let rng = Rng::new();
 
@@ -105,32 +89,14 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(led_rotation());
 
     let _ = spawner.spawn(right_rotary_rotation_watcher(
-        right_rotary_a,
-        right_rotary_b,
+        non_mutex_peripherals.right_rotary_a,
+        non_mutex_peripherals.right_rotary_b,
     ));
 
-    let _ = spawner.spawn(left_rotary_rotation_watcher(left_rotary_a, left_rotary_b));
-
-    //WHITE_LED.lock().await.as_mut().unwrap().set_high();
-
-    // let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
-    //     peripherals.I2C0,
-    //     // I2cConfig is alias of esp_hal::i2c::master::I2c::Config
-    //     I2cConfig::default().with_frequency(Rate::from_khz(400)),
-    // )
-    // .unwrap()
-    // .with_scl(peripherals.GPIO9)
-    // .with_sda(peripherals.GPIO10)
-    // .into_async();
-
-    // let interface: I2CInterface<I2c<'_, esp_hal::Async>> = I2CDisplayInterface::new(i2c_bus);
-    // // initialize the display
-    // let mut display: Ssd1306Async<
-    //     I2CInterface<I2c<'_, esp_hal::Async>>,
-    //     DisplaySize128x64,
-    //     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
-    // > = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
-    //     .into_buffered_graphics_mode();
+    let _ = spawner.spawn(left_rotary_rotation_watcher(
+        non_mutex_peripherals.left_rotary_a,
+        non_mutex_peripherals.left_rotary_b,
+    ));
 
     // wait before and after initing display, or else it competes for power and stuff will fail
     Timer::after(Duration::from_millis(500)).await;
@@ -231,9 +197,5 @@ async fn main(spawner: Spawner) -> ! {
         }
 
         Timer::after(Duration::from_millis(1)).await;
-    }
-
-    loop {
-        Timer::after(Duration::from_millis(100)).await;
     }
 }

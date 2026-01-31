@@ -1,23 +1,19 @@
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
-use rotary_encoder_embedded::angular_velocity::AngularVelocityMode;
 use rotary_encoder_embedded::quadrature::QuadratureTableMode;
 
-use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, LEDType, RED_LED, YELLOW_LED};
+use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
 
 use super::hardware;
 
 use embassy_sync::signal::Signal;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
-use heapless::{Vec, vec};
+use heapless::Vec;
 
-use embassy_time::Instant;
 use esp_hal::gpio::Input;
 use rotary_encoder_embedded::Direction;
-use rotary_encoder_embedded::RotaryEncoder;
-use rotary_encoder_embedded::standard::StandardMode;
 
 pub static BUZZER_SIGNAL: Signal<CriticalSectionRawMutex, BuzzerSequence> = Signal::new();
 pub static LED_ROTATION_SIGNAL: Signal<CriticalSectionRawMutex, LEDRotationParams> = Signal::new();
