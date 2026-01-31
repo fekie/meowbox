@@ -319,7 +319,7 @@ pub async fn right_rotary_rotation_watcher(
     //     RotaryEncoder::new(right_rotary_a, right_rotary_b).into_standard_mode();
 
     // start an encoder that we set the values of manually
-    let mut raw_encoder = QuadratureTableMode::new(3);
+    let mut raw_encoder = QuadratureTableMode::new(2);
     let _dir = raw_encoder.update(false, false);
 
     //let mut last_state = GrayState::new_right().await;
