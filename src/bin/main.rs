@@ -48,8 +48,9 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 use meowbox::tasks::{
-    led_rotation, left_button_event, play_sequence_listener, right_button_event,
-    right_rotary_rotation_watcher, rotary_switch_left_event, rotary_switch_right_event,
+    led_rotation, left_button_event, left_rotary_rotation_watcher, play_sequence_listener,
+    right_button_event, right_rotary_rotation_watcher, rotary_switch_left_event,
+    rotary_switch_right_event,
 };
 
 use meowbox::physics::{self, SCREEN_HEIGHT, SCREEN_WIDTH};
@@ -69,7 +70,7 @@ async fn main(spawner: Spawner) -> ! {
     // let timg0 = TimerGroup::new(peripherals.TIMG0);
     // esp_rtos::start(timg0.timer0);
 
-    let (mut display, right_rotary_a, right_rotary_b) =
+    let (mut display, left_rotary_a, left_rotary_b, right_rotary_a, right_rotary_b) =
         hardware::init_peripherals(peripherals).await;
 
     let rng = Rng::new();
@@ -107,6 +108,8 @@ async fn main(spawner: Spawner) -> ! {
         right_rotary_a,
         right_rotary_b,
     ));
+
+    let _ = spawner.spawn(left_rotary_rotation_watcher(left_rotary_a, left_rotary_b));
 
     //WHITE_LED.lock().await.as_mut().unwrap().set_high();
 

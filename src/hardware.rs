@@ -62,7 +62,13 @@ pub type Display = Ssd1306Async<
 /// Initializes peripherals and assigns them to their respective mutexes.
 pub async fn init_peripherals(
     peripherals: Peripherals,
-) -> (Display, Input<'static>, Input<'static>) {
+) -> (
+    Display,
+    Input<'static>,
+    Input<'static>,
+    Input<'static>,
+    Input<'static>,
+) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
 
@@ -96,6 +102,9 @@ pub async fn init_peripherals(
     let pbuzzer_bottom_right = Output::new(peripherals.GPIO13, Level::Low, output_config_default);
 
     Timer::after(Duration::from_millis(500)).await;
+
+    let left_rotary_a = Input::new(peripherals.GPIO42, pull_up_config);
+    let left_rotary_b = Input::new(peripherals.GPIO41, pull_up_config);
 
     let rotary_right_a = Input::new(peripherals.GPIO3, pull_up_config);
     let rotary_right_b = Input::new(peripherals.GPIO46, pull_up_config);
@@ -139,5 +148,11 @@ pub async fn init_peripherals(
     let display = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    (display, rotary_right_a, rotary_right_b)
+    (
+        display,
+        left_rotary_a,
+        left_rotary_b,
+        rotary_right_a,
+        rotary_right_b,
+    )
 }
