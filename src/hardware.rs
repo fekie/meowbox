@@ -37,9 +37,9 @@ pub type RotarySwitchType = Mutex<CriticalSectionRawMutex, Option<Input<'static>
 pub static ROTARY_SWITCH_LEFT: RotarySwitchType = Mutex::new(None);
 pub static ROTARY_SWITCH_RIGHT: RotarySwitchType = Mutex::new(None);
 
-pub type RotaryLineType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
-pub static ROTARY_RIGHT_A: RotaryLineType = Mutex::new(None);
-pub static ROTARY_RIGHT_B: RotaryLineType = Mutex::new(None);
+//pub type RotaryLineType = Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
+//pub static ROTARY_RIGHT_A: RotaryLineType = Mutex::new(None);
+//pub static ROTARY_RIGHT_B: RotaryLineType = Mutex::new(None);
 
 pub type LEDType = Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
 pub static RED_LED: LEDType = Mutex::new(None);
@@ -60,7 +60,9 @@ pub type Display = Ssd1306Async<
 >;
 
 /// Initializes peripherals and assigns them to their respective mutexes.
-pub async fn init_peripherals(peripherals: Peripherals) -> Display {
+pub async fn init_peripherals(
+    peripherals: Peripherals,
+) -> (Display, Input<'static>, Input<'static>) {
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0);
 
@@ -112,8 +114,8 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
         *(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
         *(PBUZZER_BOTTOM_LEFT.lock().await) = Some(pbuzzer_bottom_left);
         *(PBUZZER_BOTTOM_RIGHT.lock().await) = Some(pbuzzer_bottom_right);
-        *(ROTARY_RIGHT_A.lock().await) = Some(rotary_right_a);
-        *(ROTARY_RIGHT_B.lock().await) = Some(rotary_right_b);
+        //*(ROTARY_RIGHT_A.lock().await) = Some(rotary_right_a);
+        //*(ROTARY_RIGHT_B.lock().await) = Some(rotary_right_b);
 
         *(RED_LED.lock().await) = Some(red_led);
         *(GREEN_LED.lock().await) = Some(green_led);
@@ -137,5 +139,5 @@ pub async fn init_peripherals(peripherals: Peripherals) -> Display {
     let display = Ssd1306Async::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    display
+    (display, rotary_right_a, rotary_right_b)
 }

@@ -1,10 +1,10 @@
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
+use rotary_encoder_embedded::angular_velocity::AngularVelocityMode;
+use rotary_encoder_embedded::quadrature::QuadratureTableMode;
 
-use crate::hardware::{
-    BLUE_LED, GREEN_LED, LED_ARRAY, LEDType, RED_LED, ROTARY_RIGHT_A, ROTARY_RIGHT_B,
-};
+use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, LEDType, RED_LED};
 
 use super::hardware;
 
@@ -12,6 +12,12 @@ use embassy_sync::signal::Signal;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 
 use heapless::{Vec, vec};
+
+use embassy_time::Instant;
+use esp_hal::gpio::Input;
+use rotary_encoder_embedded::Direction;
+use rotary_encoder_embedded::RotaryEncoder;
+use rotary_encoder_embedded::standard::StandardMode;
 
 pub static BUZZER_SIGNAL: Signal<CriticalSectionRawMutex, BuzzerSequence> = Signal::new();
 pub static LED_ROTATION_SIGNAL: Signal<CriticalSectionRawMutex, LEDRotationParams> = Signal::new();
@@ -263,20 +269,20 @@ enum GrayState {
     AB10, // A=1, B=0
 }
 
-impl GrayState {
-    /// Creates a GrayState by polling the right rotary encoder's pins
-    async fn new_right() -> Self {
-        let a = ROTARY_RIGHT_A.lock().await.as_ref().unwrap().is_high();
-        let b = ROTARY_RIGHT_B.lock().await.as_ref().unwrap().is_high();
+// impl GrayState {
+//     /// Creates a GrayState by polling the right rotary encoder's pins
+//     async fn new_right() -> Self {
+//         let a = ROTARY_RIGHT_A.lock().await.as_ref().unwrap().is_high();
+//         let b = ROTARY_RIGHT_B.lock().await.as_ref().unwrap().is_high();
 
-        match (a, b) {
-            (false, false) => GrayState::AB00,
-            (false, true) => GrayState::AB01,
-            (true, true) => GrayState::AB11,
-            (true, false) => GrayState::AB10,
-        }
-    }
-}
+//         match (a, b) {
+//             (false, false) => GrayState::AB00,
+//             (false, true) => GrayState::AB01,
+//             (true, true) => GrayState::AB11,
+//             (true, false) => GrayState::AB10,
+//         }
+//     }
+// }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MicroRotation {
@@ -305,11 +311,21 @@ fn decode_transition(from: GrayState, to: GrayState) -> MicroRotation {
 }
 
 #[task]
-pub async fn right_rotary_rotation_watcher() {
-    let mut last_state = GrayState::new_right().await;
+pub async fn right_rotary_rotation_watcher(
+    mut right_rotary_a: Input<'static>,
+    mut right_rotary_b: Input<'static>,
+) {
+    // let mut rotary_encoder =
+    //     RotaryEncoder::new(right_rotary_a, right_rotary_b).into_standard_mode();
+
+    // start an encoder that we set the values of manually
+    let mut raw_encoder = AngularVelocityMode::new();
+    let _dir = raw_encoder.update(false, false, Instant::now().as_millis());
+
+    //let mut last_state = GrayState::new_right().await;
 
     // accumulated microsteps
-    let mut microstep_acc: i8 = 0;
+    //let mut microstep_acc: i8 = 0;
 
     loop {
         // We check rotation by waiting for the A signal to go high.
@@ -317,58 +333,94 @@ pub async fn right_rotary_rotation_watcher() {
         // went clockwise
 
         // wait for either one to trigger
+        // embassy_futures::select::select(
+        //     ROTARY_RIGHT_A
+        //         .lock()
+        //         .await
+        //         .as_mut()
+        //         .unwrap()
+        //         .wait_for_any_edge(),
+        //     ROTARY_RIGHT_B
+        //         .lock()
+        //         .await
+        //         .as_mut()
+        //         .unwrap()
+        //         .wait_for_any_edge(),
+        // )
+        // .await;
+
+        // Wait until an edge happens on either line A or B
         embassy_futures::select::select(
-            ROTARY_RIGHT_A
-                .lock()
-                .await
-                .as_mut()
-                .unwrap()
-                .wait_for_any_edge(),
-            ROTARY_RIGHT_B
-                .lock()
-                .await
-                .as_mut()
-                .unwrap()
-                .wait_for_any_edge(),
+            right_rotary_a.wait_for_falling_edge(),
+            right_rotary_b.wait_for_falling_edge(),
         )
         .await;
 
-        let new_state = GrayState::new_right().await;
-        let step = decode_transition(last_state, new_state);
+        // whenever this happens, update the state of the encoder
+        let dir = raw_encoder.update(
+            right_rotary_b.is_low(),
+            right_rotary_a.is_low(),
+            Instant::now().as_millis(),
+        );
 
-        match step {
-            MicroRotation::Clockwise => {
-                if microstep_acc >= 0 {
-                    microstep_acc += 1;
-                } else {
-                    // direction reversal
-                    microstep_acc = 1;
-                }
+        match dir {
+            Direction::Clockwise => {
+                BLUE_LED.lock().await.as_mut().unwrap().set_high();
+                GREEN_LED.lock().await.as_mut().unwrap().set_low();
+                //info!("clockwise");
+                //Timer::after(Duration::from_millis(200)).await;
 
-                info!("clockwise micro");
+                // Increment some value
             }
-            MicroRotation::CounterClockwise => {
-                if microstep_acc <= 0 {
-                    microstep_acc -= 1;
-                } else {
-                    // direction reversal
-                    microstep_acc = -1;
-                }
-                info!("counterclockwise micro");
+            Direction::Anticlockwise => {
+                GREEN_LED.lock().await.as_mut().unwrap().set_high();
+                BLUE_LED.lock().await.as_mut().unwrap().set_low();
+                //Timer::after(Duration::from_millis(200)).await;
+
+                // Decrement some value
             }
-            MicroRotation::None => {}
+            Direction::None => {
+                //info!("nothing");
+                // Do nothing
+            }
         }
 
-        // If we reach 4 microsteps in either direction, we have a full rotation
-        if microstep_acc == 4 {
-            microstep_acc = 0;
-            GREEN_LED.lock().await.as_mut().unwrap().toggle();
-        } else if microstep_acc == -4 {
-            microstep_acc = 0;
-            BLUE_LED.lock().await.as_mut().unwrap().toggle();
-        }
+        // let new_state = GrayState::new_right().await;
+        // let step = decode_transition(last_state, new_state);
 
-        last_state = new_state;
+        // match step {
+        //     MicroRotation::Clockwise => {
+        //         if microstep_acc >= 0 {
+        //             microstep_acc += 1;
+        //         } else {
+        //             // direction reversal
+        //             microstep_acc = 1;
+        //         }
+
+        //         info!("clockwise micro");
+        //     }
+        //     MicroRotation::CounterClockwise => {
+        //         if microstep_acc <= 0 {
+        //             microstep_acc -= 1;
+        //         } else {
+        //             // direction reversal
+        //             microstep_acc = -1;
+        //         }
+        //         info!("counterclockwise micro");
+        //     }
+        //     MicroRotation::None => {}
+        // }
+
+        // // If we reach 4 microsteps in either direction, we have a full rotation
+        // if microstep_acc == 4 {
+        //     microstep_acc = 0;
+        //     GREEN_LED.lock().await.as_mut().unwrap().toggle();
+        // } else if microstep_acc == -4 {
+        //     microstep_acc = 0;
+        //     BLUE_LED.lock().await.as_mut().unwrap().toggle();
+        // }
+
+        // last_state = new_state;
 
         // match ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_high() {
         //     // CW rotation

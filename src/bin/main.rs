@@ -69,7 +69,8 @@ async fn main(spawner: Spawner) -> ! {
     // let timg0 = TimerGroup::new(peripherals.TIMG0);
     // esp_rtos::start(timg0.timer0);
 
-    let mut display = hardware::init_peripherals(peripherals).await;
+    let (mut display, right_rotary_a, right_rotary_b) =
+        hardware::init_peripherals(peripherals).await;
 
     let rng = Rng::new();
 
@@ -102,7 +103,10 @@ async fn main(spawner: Spawner) -> ! {
 
     let _ = spawner.spawn(led_rotation());
 
-    let _ = spawner.spawn(right_rotary_rotation_watcher());
+    let _ = spawner.spawn(right_rotary_rotation_watcher(
+        right_rotary_a,
+        right_rotary_b,
+    ));
 
     //WHITE_LED.lock().await.as_mut().unwrap().set_high();
 
