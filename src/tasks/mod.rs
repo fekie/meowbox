@@ -1,24 +1,19 @@
 use defmt::{error, info, warn};
 use embassy_executor::task;
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal,
+};
 use embassy_time::{Duration, Timer};
-use rotary_encoder_embedded::quadrature::QuadratureTableMode;
-
-use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
-
-use super::hardware;
-
-use embassy_sync::signal::Signal;
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
-
-use heapless::Vec;
-
 use esp_hal::gpio::Input;
-use rotary_encoder_embedded::Direction;
-
+use heapless::Vec;
 pub use rotary::{
     left_rotary_rotation_watcher, right_rotary_rotation_watcher, rotary_switch_left_event,
     rotary_switch_right_event,
 };
+use rotary_encoder_embedded::{Direction, quadrature::QuadratureTableMode};
+
+use super::hardware;
+use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
 
 pub mod rotary;
 

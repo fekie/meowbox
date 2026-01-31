@@ -1,21 +1,15 @@
 use defmt::{error, info, warn};
 use embassy_executor::task;
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal,
+};
 use embassy_time::{Duration, Timer};
-use rotary_encoder_embedded::quadrature::QuadratureTableMode;
-
-use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
-
-use super::hardware;
-
-use embassy_sync::signal::Signal;
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
-
-use heapless::Vec;
-
 use esp_hal::gpio::Input;
-use rotary_encoder_embedded::Direction;
+use heapless::Vec;
+use rotary_encoder_embedded::{Direction, quadrature::QuadratureTableMode};
 
-use super::{BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL, LEDRotationParams};
+use super::{BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL, LEDRotationParams, hardware};
+use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
 
 #[task]
 pub async fn rotary_switch_left_event(
