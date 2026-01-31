@@ -319,8 +319,8 @@ pub async fn right_rotary_rotation_watcher(
     //     RotaryEncoder::new(right_rotary_a, right_rotary_b).into_standard_mode();
 
     // start an encoder that we set the values of manually
-    let mut raw_encoder = AngularVelocityMode::new();
-    let _dir = raw_encoder.update(false, false, Instant::now().as_millis());
+    let mut raw_encoder = QuadratureTableMode::new(3);
+    let _dir = raw_encoder.update(false, false);
 
     //let mut last_state = GrayState::new_right().await;
 
@@ -349,19 +349,17 @@ pub async fn right_rotary_rotation_watcher(
         // )
         // .await;
 
+        //Timer::after(Duration::from_micros(1100)).await;
+
         // Wait until an edge happens on either line A or B
-        embassy_futures::select::select(
-            right_rotary_a.wait_for_falling_edge(),
-            right_rotary_b.wait_for_falling_edge(),
-        )
-        .await;
+        // embassy_futures::select::select(
+        //     right_rotary_a.wait_for_falling_edge(),
+        //     right_rotary_b.wait_for_falling_edge(),
+        // )
+        // .await;
 
         // whenever this happens, update the state of the encoder
-        let dir = raw_encoder.update(
-            right_rotary_b.is_low(),
-            right_rotary_a.is_low(),
-            Instant::now().as_millis(),
-        );
+        let dir = raw_encoder.update(right_rotary_b.is_low(), right_rotary_a.is_low());
 
         match dir {
             Direction::Clockwise => {
@@ -445,6 +443,8 @@ pub async fn right_rotary_rotation_watcher(
         // }
 
         // wait until both lines are low
+
+        Timer::after(Duration::from_micros(1000)).await; // 1 kHz
     }
 }
 
