@@ -252,66 +252,149 @@ pub async fn led_rotation() {
     }
 }
 
+/// Encodes for the current state of the A and B lines. This makes
+/// it easier to "traverse" the line signal, as each option only has
+/// one valid "path" it can take.
+#[derive(Copy, Clone, Debug)]
+enum GrayState {
+    AB00, // A=0, B=0
+    AB01, // A=0, B=1
+    AB11, // A=1, B=1
+    AB10, // A=1, B=0
+}
+
+impl GrayState {
+    /// Creates a GrayState by polling the right rotary encoder's pins
+    async fn new_right() -> Self {
+        let a = ROTARY_RIGHT_A.lock().await.as_ref().unwrap().is_high();
+        let b = ROTARY_RIGHT_B.lock().await.as_ref().unwrap().is_high();
+
+        match (a, b) {
+            (false, false) => GrayState::AB00,
+            (false, true) => GrayState::AB01,
+            (true, true) => GrayState::AB11,
+            (true, false) => GrayState::AB10,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum MicroRotation {
+    Clockwise,
+    CounterClockwise,
+    None, // bounce / illegal / no movement
+}
+
+fn decode_transition(from: GrayState, to: GrayState) -> MicroRotation {
+    match (from, to) {
+        // clockwise (B leads A)
+        (GrayState::AB00, GrayState::AB01) => MicroRotation::Clockwise,
+        (GrayState::AB01, GrayState::AB11) => MicroRotation::Clockwise,
+        (GrayState::AB11, GrayState::AB10) => MicroRotation::Clockwise,
+        (GrayState::AB10, GrayState::AB00) => MicroRotation::Clockwise,
+
+        // counter-clockwise
+        (GrayState::AB00, GrayState::AB10) => MicroRotation::CounterClockwise,
+        (GrayState::AB10, GrayState::AB11) => MicroRotation::CounterClockwise,
+        (GrayState::AB11, GrayState::AB01) => MicroRotation::CounterClockwise,
+        (GrayState::AB01, GrayState::AB00) => MicroRotation::CounterClockwise,
+
+        // bounce, illegal, or no change
+        _ => MicroRotation::None,
+    }
+}
+
 #[task]
 pub async fn right_rotary_rotation_watcher() {
+    let mut last_state = GrayState::new_right().await;
+
+    // accumulated microsteps
+    let mut microstep_acc: i8 = 0;
+
     loop {
         // We check rotation by waiting for the A signal to go high.
         // If B is high when A is high, then we know B came first and we
         // went clockwise
-        ROTARY_RIGHT_A
-            .lock()
-            .await
-            .as_mut()
-            .unwrap()
-            .wait_for_rising_edge()
-            .await;
 
-        match ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_high() {
-            // CW rotation
-            true => {
-                GREEN_LED.lock().await.as_mut().unwrap().toggle();
+        // wait for either one to trigger
+        embassy_futures::select::select(
+            ROTARY_RIGHT_A
+                .lock()
+                .await
+                .as_mut()
+                .unwrap()
+                .wait_for_any_edge(),
+            ROTARY_RIGHT_B
+                .lock()
+                .await
+                .as_mut()
+                .unwrap()
+                .wait_for_any_edge(),
+        )
+        .await;
+
+        let new_state = GrayState::new_right().await;
+        let step = decode_transition(last_state, new_state);
+
+        match step {
+            MicroRotation::Clockwise => {
+                if microstep_acc >= 0 {
+                    microstep_acc += 1;
+                } else {
+                    // direction reversal
+                    microstep_acc = 1;
+                }
+
+                info!("clockwise micro");
             }
-            // CCW rotation
-            false => {
-                BLUE_LED.lock().await.as_mut().unwrap().toggle();
+            MicroRotation::CounterClockwise => {
+                if microstep_acc <= 0 {
+                    microstep_acc -= 1;
+                } else {
+                    // direction reversal
+                    microstep_acc = -1;
+                }
+                info!("counterclockwise micro");
             }
+            MicroRotation::None => {}
         }
 
-        loop {
-            let a_is_low = ROTARY_RIGHT_A.lock().await.as_mut().unwrap().is_low();
-            let b_is_low = ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_low();
-
-            if (a_is_low && b_is_low) {
-                break;
-            }
-
-            Timer::after(Duration::from_micros(100)).await;
+        // If we reach 4 microsteps in either direction, we have a full rotation
+        if microstep_acc == 4 {
+            microstep_acc = 0;
+            GREEN_LED.lock().await.as_mut().unwrap().toggle();
+        } else if microstep_acc == -4 {
+            microstep_acc = 0;
+            BLUE_LED.lock().await.as_mut().unwrap().toggle();
         }
+
+        last_state = new_state;
+
+        // match ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_high() {
+        //     // CW rotation
+        //     true => {
+        //         GREEN_LED.lock().await.as_mut().unwrap().toggle();
+        //     }
+        //     // CCW rotation
+        //     false => {
+        //         BLUE_LED.lock().await.as_mut().unwrap().toggle();
+        //     }
+        // }
+
+        // loop {
+        //     let a_is_low = ROTARY_RIGHT_A.lock().await.as_mut().unwrap().is_low();
+        //     let b_is_low = ROTARY_RIGHT_B.lock().await.as_mut().unwrap().is_low();
+
+        //     if (a_is_low && b_is_low) {
+        //         break;
+        //     }
+
+        //     Timer::after(Duration::from_micros(100)).await;
+        // }
 
         // wait until both lines are low
     }
 }
-
-// #[task]
-// async fn full_led_rotation(
-//     red_led: &'static hardware::LEDType,
-//     green_led: &'static hardware::LEDType,
-//     blue_led: &'static hardware::LEDType,
-//     yellow_led: &'static hardware::LEDType,
-//     white_led: &'static hardware::LEDType,
-//     cycles: u16,
-// ) {
-//     // make sure all of them are set low first
-//     red_led.lock().await.as_mut().unwrap().set_low();
-//     green_led.lock().await.as_mut().unwrap().set_low();
-//     blue_led.lock().await.as_mut().unwrap().set_low();
-//     yellow_led.lock().await.as_mut().unwrap().set_low();
-//     white_led.lock().await.as_mut().unwrap().set_low();
-
-//     for _ in 0..cycles {
-//         red_led.lock().await.as_mut().unwrap().set_high();
-//     }
-// }
 
 pub async fn all_leds_off() {
     // set all leds to off
