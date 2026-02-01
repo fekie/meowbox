@@ -1,8 +1,8 @@
+#[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio::Input;
-use heapless::Vec;
 use rotary_encoder_embedded::{
     Direction, quadrature::QuadratureTableMode,
 };
@@ -11,15 +11,12 @@ use super::{
     BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL,
     LEDRotationParams, hardware,
 };
-use crate::hardware::{
-    BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
-};
+use crate::hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED};
 
 #[task]
 pub async fn rotary_switch_left_event(
     rotary_switch: &'static hardware::RotarySwitchType,
     led: &'static hardware::ButtonLEDType,
-    buzzer: &'static hardware::BuzzerType,
 ) {
     // TODO: basically make the buzzer beeping a separate task, that
     // waits for a message on a channel
@@ -50,7 +47,6 @@ pub async fn rotary_switch_left_event(
 pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
     led: &'static hardware::ButtonLEDType,
-    buzzer: &'static hardware::BuzzerType,
 ) {
     // TODO: basically make the buzzer beeping a separate task, that
     // waits for a message on a channel

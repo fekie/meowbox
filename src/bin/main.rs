@@ -32,22 +32,25 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 use meowbox::{
     physics::{self, SCREEN_WIDTH},
     tasks::{
-        led_rotation, left_button_event, left_rotary_rotation_watcher, play_sequence_listener,
-        right_button_event, right_rotary_rotation_watcher, rotary_switch_left_event,
-        rotary_switch_right_event,
+        led_rotation, left_button_event,
+        left_rotary_rotation_watcher, play_sequence_listener,
+        right_button_event, right_rotary_rotation_watcher,
+        rotary_switch_left_event, rotary_switch_right_event,
     },
 };
 
-// This creates a default app-descriptor required by the esp-idf bootloader.
-// For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
+// This creates a default app-descriptor required by the esp-idf
+// bootloader. For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
-    let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+    let config =
+        esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    let non_mutex_peripherals = hardware::init_peripherals(peripherals).await;
+    let non_mutex_peripherals =
+        hardware::init_peripherals(peripherals).await;
     let mut display = non_mutex_peripherals.display;
 
     let rng = Rng::new();
@@ -68,13 +71,11 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(rotary_switch_left_event(
         &hardware::ROTARY_SWITCH_LEFT,
         &hardware::LEFT_BUTTON_LED,
-        &hardware::BUZZER,
     ));
 
     let _ = spawner.spawn(rotary_switch_right_event(
         &hardware::ROTARY_SWITCH_RIGHT,
         &hardware::RIGHT_BUTTON_LED,
-        &hardware::BUZZER,
     ));
 
     let _ = spawner.spawn(play_sequence_listener(&hardware::BUZZER));
@@ -91,7 +92,8 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_b,
     ));
 
-    // wait before and after initing display, or else it competes for power and stuff will fail
+    // wait before and after initing display, or else it competes for
+    // power and stuff will fail
     Timer::after(Duration::from_millis(500)).await;
     //display.init().await.expect("failed to initialize display");
     loop {
@@ -140,25 +142,31 @@ async fn main(spawner: Spawner) -> ! {
     // will do a 8x4 grid flow field, where
     // each one has an angle (each has the same magnitude).
     // This array will contain row 0 first, then row 1, etc
-    //let mut flow_field: [f32; FLOW_FIELD_SIZE] = [0.0; FLOW_FIELD_SIZE];
+    //let mut flow_field: [f32; FLOW_FIELD_SIZE] = [0.0;
+    // FLOW_FIELD_SIZE];
 
     let mut flow_field = physics::FlowField::new();
 
     for (i, chunk) in flow_field.0.iter_mut().enumerate() {
-        // a full rotation is 2pi, so we want to have each one generate
-        // a bit more of a rotation than the last
+        // a full rotation is 2pi, so we want to have each one
+        // generate a bit more of a rotation than the last
 
         let y = i / SCREEN_WIDTH as usize;
         let x = i % SCREEN_WIDTH as usize;
 
-        let perlin_angle = perlin_2d(x as f32 * 0.03, y as f32 * 0.03).clamp(-1.0, 1.0) * 2.0 * PI;
+        let perlin_angle =
+            perlin_2d(x as f32 * 0.03, y as f32 * 0.03)
+                .clamp(-1.0, 1.0)
+                * 2.0
+                * PI;
 
         *chunk = perlin_angle;
     }
 
     loop {
-        // TODO: run the routine here, and after each one finishes it goes and checks
-        // what the next routine is needed to run
+        // TODO: run the routine here, and after each one finishes it
+        // goes and checks what the next routine is needed to
+        // run
 
         if let Err(e) = display.clear(BinaryColor::Off) {
             info!("error on clear");
