@@ -4,8 +4,18 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Timer};
 use esp_hal::{
-    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
+    Config,
+    clock::CpuClock,
+    gpio::{
+        DriveMode, Input, InputConfig, Level, Output, OutputConfig,
+        Pull,
+    },
     i2c::master::{Config as I2cConfig, I2c},
+    ledc::{
+        Ledc, LowSpeed,
+        channel::{self, ChannelIFace},
+        timer::{self, TimerIFace},
+    },
     time::Rate,
     timer::timg::TimerGroup,
 };
@@ -140,11 +150,11 @@ pub async fn init_peripherals(
         Level::High,
         output_config_default,
     );
-    let pbuzzer_top_right = Output::new(
-        peripherals.GPIO20,
-        Level::Low,
-        output_config_default,
-    );
+    // let pbuzzer_top_right = Output::new(
+    //     peripherals.GPIO20,
+    //     Level::Low,
+    //     output_config_default,
+    // );
     let pbuzzer_bottom_left = Output::new(
         peripherals.GPIO5,
         Level::Low,
@@ -180,11 +190,11 @@ pub async fn init_peripherals(
         *(ROTARY_SWITCH_RIGHT.lock().await) =
             Some(rotary_switch_right);
         *(PBUZZER_TOP_LEFT.lock().await) = Some(pbuzzer_top_left);
-        *(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
+        //*(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
         *(PBUZZER_BOTTOM_LEFT.lock().await) =
             Some(pbuzzer_bottom_left);
-        *(PBUZZER_BOTTOM_RIGHT.lock().await) =
-            Some(pbuzzer_bottom_right);
+        // *(PBUZZER_BOTTOM_RIGHT.lock().await) =
+        //     Some(pbuzzer_bottom_right);
 
         *(RED_LED.lock().await) = Some(red_led);
         *(GREEN_LED.lock().await) = Some(green_led);
@@ -211,6 +221,34 @@ pub async fn init_peripherals(
         DisplayRotation::Rotate0,
     )
     .into_buffered_graphics_mode();
+
+    let ledc = Ledc::new(peripherals.LEDC);
+
+    let mut timer = ledc.timer::<LowSpeed>(timer::Number::Timer0);
+    timer
+        .configure(timer::config::Config {
+            duty: timer::config::Duty::Duty10Bit,
+            clock_source: timer::LSClockSource::APBClk,
+            frequency: Rate::from_hz(2000),
+        })
+        .unwrap();
+
+    let buzzer_pin = peripherals.GPIO20;
+
+    let mut channel =
+        ledc.channel(channel::Number::Channel0, buzzer_pin);
+
+    channel
+        .configure(channel::config::Config {
+            timer: &timer,
+            duty_pct: 50,
+            drive_mode: DriveMode::PushPull,
+        })
+        .unwrap();
+
+    channel.set_duty(50).unwrap();
+
+    Timer::after(Duration::from_millis(5000)).await;
 
     NonMutexPeripherals {
         display,
