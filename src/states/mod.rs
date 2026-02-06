@@ -7,7 +7,12 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Timer};
 
-use super::hardware;
+use super::hardware::{
+    self, BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
+};
+
+pub mod error_state;
+pub mod light_ring;
 
 /// The overarching state of the machine that specifies which routines
 /// it is currently running. States can contain smaller substates.
@@ -16,18 +21,31 @@ pub enum State {
     Menu(Stage),
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
-    ErrorState,
+    ErrorState(ErrorStateType),
 }
 
 impl State {
     /// Run the next tick based on the current state.
-    pub fn tick(&mut self) {
+    pub async fn tick(&mut self) {
         match self {
-            Self::ErrorState => error!("error state"),
+            Self::LightRing(_, _) => {
+                self.control_light_ring();
+            }
+            Self::ErrorState(etype) => match etype {
+                _ => {
+                    RED_LED.lock().await.as_mut().unwrap().toggle();
+                    error!("error state");
+                    Timer::after(Duration::from_millis(200)).await;
+                }
+            },
 
             // If we dont yet have the state implemented, go to the
             // error state.
-            _ => *self = Self::ErrorState,
+            _ => {
+                *self = Self::ErrorState(
+                    ErrorStateType::StateNotImplemented,
+                )
+            }
         }
     }
 
@@ -44,6 +62,13 @@ pub enum Stage {
     Setup,
     Execution,
     Shutdown,
+}
+
+#[derive(Default, Clone, Copy, Debug)]
+pub enum ErrorStateType {
+    #[default]
+    Unknown,
+    StateNotImplemented,
 }
 
 #[derive(Default, Clone, Copy, Debug)]
