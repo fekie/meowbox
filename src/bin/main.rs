@@ -19,7 +19,10 @@ use embedded_graphics::{
 };
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println as _;
-use meowbox::hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED};
+use meowbox::{
+    hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
+    states::{LightRingState, Meowbox, Stage, State},
+};
 use noise_perlin::perlin_2d;
 use ssd1306::prelude::*;
 
@@ -168,7 +171,14 @@ async fn main(spawner: Spawner) -> ! {
         *chunk = perlin_angle;
     }
 
+    let mut meowbox = Meowbox::new(State::LightRing(
+        Stage::Setup,
+        LightRingState::White,
+    ));
+
     loop {
+        meowbox.tick().await;
+
         // TODO: run the routine here, and after each one finishes it
         // goes and checks what the next routine is needed to
         // run

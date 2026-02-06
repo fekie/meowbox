@@ -20,20 +20,28 @@ pub mod light_ring;
 /// type. Because a Box requires a heap (which the program does not
 /// have), a wrapper containing both must be used.
 pub struct Meowbox {
-    state: State,
+    pub state: State,
     /// If next_state exists, the next tick will go into shutdown.
     /// Each tick, the shutdown function will be run until the
     /// shutdown function changes the state and clears
     /// next_state.
-    next_state: Option<State>,
+    pub next_state: Option<State>,
     /// This is set to true when a shutdown is needed. When this is
     /// set to true, the state will go into shutdown mode, but
     /// `next_state` will not be set to None until the state is
     /// actually transisitoned.
-    needs_to_shutdown: bool,
+    pub needs_to_shutdown: bool,
 }
 
 impl Meowbox {
+    pub fn new(starting_state: State) -> Self {
+        Meowbox {
+            state: starting_state,
+            next_state: None,
+            needs_to_shutdown: false,
+        }
+    }
+
     pub async fn tick(&mut self) {
         self.check_for_shutdown_transition();
 
@@ -73,6 +81,8 @@ impl Meowbox {
         if !self.needs_to_shutdown {
             return;
         }
+
+        self.needs_to_shutdown = false;
 
         // If there is a need to shutdown, then set to shutdown.
         // Annoying, a match tree has to be used here.
