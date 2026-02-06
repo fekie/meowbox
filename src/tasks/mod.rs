@@ -1,29 +1,47 @@
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal,
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
+    signal::Signal,
 };
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio::Input;
 use heapless::Vec;
 pub use rotary::{
-    left_rotary_rotation_watcher, right_rotary_rotation_watcher, rotary_switch_left_event,
-    rotary_switch_right_event,
+    left_rotary_rotation_watcher, right_rotary_rotation_watcher,
+    rotary_switch_left_event, rotary_switch_right_event,
 };
-use rotary_encoder_embedded::{Direction, quadrature::QuadratureTableMode};
+use rotary_encoder_embedded::{
+    Direction, quadrature::QuadratureTableMode,
+};
 
 use super::hardware;
-use crate::hardware::{BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED};
+use crate::hardware::{
+    BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
+};
 
 pub mod rotary;
 
-pub static BUZZER_SIGNAL: Signal<CriticalSectionRawMutex, BuzzerSequence> = Signal::new();
-pub static LED_ROTATION_SIGNAL: Signal<CriticalSectionRawMutex, LEDRotationParams> = Signal::new();
+pub static BUZZER_SIGNAL: Signal<
+    CriticalSectionRawMutex,
+    BuzzerSequence,
+> = Signal::new();
+pub static LED_ROTATION_SIGNAL: Signal<
+    CriticalSectionRawMutex,
+    LEDRotationParams,
+> = Signal::new();
 
 /// A value comes into the channel when
-pub static RIGHT_CLOCKWISE_ROTATION: Channel<CriticalSectionRawMutex, (), 64> = Channel::new();
-pub static RIGHT_COUNTER_CLOCKWISE_ROTATION: Channel<CriticalSectionRawMutex, (), 64> =
-    Channel::new();
+pub static RIGHT_CLOCKWISE_ROTATION: Channel<
+    CriticalSectionRawMutex,
+    (),
+    64,
+> = Channel::new();
+pub static RIGHT_COUNTER_CLOCKWISE_ROTATION: Channel<
+    CriticalSectionRawMutex,
+    (),
+    64,
+> = Channel::new();
 
 pub enum BuzzerSequence {
     SimpleTone200ms,
@@ -83,7 +101,9 @@ pub async fn right_button_event(
 }
 
 #[task]
-pub async fn play_sequence_listener(buzzer: &'static hardware::BuzzerType) {
+pub async fn play_sequence_listener(
+    buzzer: &'static hardware::BuzzerType,
+) {
     // TODO: basically make the buzzer beeping a separate task, that
     // waits for a message on a channel
     loop {
@@ -93,7 +113,10 @@ pub async fn play_sequence_listener(buzzer: &'static hardware::BuzzerType) {
     }
 }
 
-async fn execute_sequence(buzzer: &'static hardware::BuzzerType, sequence: &BuzzerSequence) {
+async fn execute_sequence(
+    buzzer: &'static hardware::BuzzerType,
+    sequence: &BuzzerSequence,
+) {
     match sequence {
         BuzzerSequence::SimpleTone200ms => {
             buzzer.lock().await.as_mut().unwrap().set_high();
@@ -121,8 +144,8 @@ async fn execute_sequence(buzzer: &'static hardware::BuzzerType, sequence: &Buzz
 }
 
 /// Specifies the parameters for an led rotation. You can specify
-/// a pattern of up to 20 LEDs. You can also specify the amount of cycles
-/// to do.
+/// a pattern of up to 20 LEDs. You can also specify the amount of
+/// cycles to do.
 
 pub struct LEDRotationParams {
     /// LED lightup pattern order.
@@ -174,7 +197,12 @@ pub async fn led_rotation() {
         for _ in 0..params.cycles {
             for led_select in &params.selection {
                 let i: usize = *led_select as usize;
-                LED_ARRAY[i].lock().await.as_mut().unwrap().set_high();
+                LED_ARRAY[i]
+                    .lock()
+                    .await
+                    .as_mut()
+                    .unwrap()
+                    .set_high();
 
                 let half_time = params.interval / 2;
 
@@ -182,7 +210,12 @@ pub async fn led_rotation() {
                 Timer::after(Duration::from_millis(half_time)).await;
 
                 if let Some(last) = last_i {
-                    LED_ARRAY[last].lock().await.as_mut().unwrap().set_low();
+                    LED_ARRAY[last]
+                        .lock()
+                        .await
+                        .as_mut()
+                        .unwrap()
+                        .set_low();
                 }
 
                 last_i = Some(i);
