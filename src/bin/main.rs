@@ -49,7 +49,7 @@ async fn main(spawner: Spawner) -> ! {
         esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    let non_mutex_peripherals =
+    let mut non_mutex_peripherals =
         hardware::init_peripherals(peripherals).await;
     let mut display = non_mutex_peripherals.display;
 
@@ -196,6 +196,8 @@ async fn main(spawner: Spawner) -> ! {
         for chunk in &mut flow_field.0 {
             *chunk += angle;
         }
+
+        //non_mutex_peripherals.simple_speaker.toggle();
 
         Timer::after(Duration::from_millis(1)).await;
     }

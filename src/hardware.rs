@@ -77,6 +77,7 @@ pub struct NonMutexPeripherals {
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,
     pub right_rotary_b: Input<'static>,
+    pub simple_speaker: Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -178,7 +179,13 @@ pub async fn init_peripherals(
     let right_rotary_b =
         Input::new(peripherals.GPIO46, pull_up_config);
 
-    Timer::after(Duration::from_millis(500)).await;
+    let simple_speaker = Output::new(
+        peripherals.GPIO47,
+        Level::Low,
+        output_config_default,
+    );
+
+    //Timer::after(Duration::from_millis(500)).await;
 
     {
         *(RIGHT_BUTTON.lock().await) = Some(right_button);
@@ -256,5 +263,6 @@ pub async fn init_peripherals(
         left_rotary_b,
         right_rotary_a,
         right_rotary_b,
+        simple_speaker,
     }
 }
