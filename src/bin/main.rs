@@ -17,7 +17,7 @@ use embedded_graphics::{
     prelude::{Point, *},
     text::{Baseline, Text},
 };
-use esp_hal::{clock::CpuClock, rng::Rng};
+use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println as _;
 use meowbox::hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED};
 use noise_perlin::perlin_2d;
@@ -46,11 +46,16 @@ esp_bootloader_esp_idf::esp_app_desc!();
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     let config =
-        esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+        esp_hal::Config::default().with_cpu_clock(CpuClock::_80MHz);
     let peripherals = esp_hal::init(config);
 
     let mut non_mutex_peripherals =
         hardware::init_peripherals(peripherals).await;
+
+    // Enable the watchdog timer and feed it for the first time
+    //non_mutex_peripherals.timg1.wdt.enable();
+    //non_mutex_peripherals.timg1.wdt.feed();
+
     let mut display = non_mutex_peripherals.display;
 
     let rng = Rng::new();
