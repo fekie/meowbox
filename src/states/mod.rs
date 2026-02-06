@@ -1,3 +1,4 @@
+use defmt::Format;
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_executor::task;
@@ -37,7 +38,7 @@ impl Meowbox {
         self.check_for_shutdown_transition();
 
         match self.state {
-            State::LightRing(stage, light_ring_state) => {
+            State::LightRing(stage, _) => {
                 match stage {
                     Stage::Setup => self.setup_light_ring().await,
                     Stage::Execution => {
@@ -52,7 +53,7 @@ impl Meowbox {
             State::ErrorState(etype) => match etype {
                 _ => {
                     RED_LED.lock().await.as_mut().unwrap().toggle();
-                    error!("error state");
+                    error!("error state {:?}", etype);
                     Timer::after(Duration::from_millis(200)).await;
                 }
             },
@@ -125,11 +126,12 @@ pub enum Stage {
     Shutdown,
 }
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, Format)]
 pub enum ErrorStateType {
     #[default]
     Unknown,
     StateNotImplemented,
+    NextStateNotSpecified,
 }
 
 #[derive(Default, Clone, Copy, Debug)]
