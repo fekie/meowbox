@@ -5,25 +5,38 @@ use static_cell::StaticCell;
 
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
+    physics,
     states::{ErrorStateType, LightRingState, Meowbox, Stage, State},
     tasks::all_leds_off,
 };
 
-static CELL: StaticCell<u32> = StaticCell::new();
+//static CELL: StaticCell<u32> = StaticCell::new();
 
 impl Meowbox {
-    pub(super) async fn tick_flow_field(&mut self) {}
-
-    pub(super) async fn setup_flow_field(&mut self) {
-        // turn all leds off and go to next state
-        // all_leds_off().await;
-        // self.state = State::LightRing(
-        //     Stage::Execution,
-        //     LightRingState::default(),
-        // );
+    pub(super) async fn tick_flow_field(&mut self) {
+        if let State::FlowField(stage, _) = self.state {
+            match stage {
+                Stage::Setup => self.setup_flow_field().await,
+                Stage::Execution => self.execute_flow_field().await,
+                Stage::Shutdown => self.shutdown_flow_field().await,
+            }
+        }
     }
 
-    pub(super) async fn execute_flow_field(&mut self) {
+    async fn setup_flow_field(&mut self) {
+        // init positions of particles
+        self.resources.particles[1].set_pos(10.0, 10.0);
+        self.resources.particles[2].set_pos(20.0, 20.0);
+        self.resources.particles[3].set_pos(30.0, 30.0);
+        self.resources.particles[4].set_pos(127.0, 63.0);
+
+        self.state = State::LightRing(
+            Stage::Execution,
+            LightRingState::default(),
+        );
+    }
+
+    async fn execute_flow_field(&mut self) {
         // if let State::LightRing(_, light_ring_state) = &mut
         // self.state {
         //     match light_ring_state {
@@ -104,7 +117,7 @@ impl Meowbox {
         // Timer::after(Duration::from_millis(200)).await;
     }
 
-    pub(super) async fn shutdown_flow_field(&mut self) {
+    async fn shutdown_flow_field(&mut self) {
         // TODO: turn all lights off
         // all_leds_off().await;
 

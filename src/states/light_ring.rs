@@ -19,7 +19,7 @@ impl Meowbox {
         }
     }
 
-    pub(super) async fn setup_light_ring(&mut self) {
+    async fn setup_light_ring(&mut self) {
         // turn all leds off and go to next state
         all_leds_off().await;
         self.state = State::LightRing(
@@ -28,7 +28,7 @@ impl Meowbox {
         );
     }
 
-    pub(super) async fn execute_light_ring(&mut self) {
+    async fn execute_light_ring(&mut self) {
         if let State::LightRing(_, light_ring_state) = &mut self.state
         {
             match light_ring_state {
@@ -110,7 +110,7 @@ impl Meowbox {
 
     /// This method is called if the state is in shutdown. Shutdown
     /// is only started when an item exists in next_state.
-    pub(super) async fn shutdown_light_ring(&mut self) {
+    async fn shutdown_light_ring(&mut self) {
         // TODO: turn all lights off
         all_leds_off().await;
 

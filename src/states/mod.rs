@@ -9,14 +9,25 @@ use embassy_sync::{
 use embassy_time::{Duration, Timer};
 use static_cell::StaticCell;
 
+use crate::physics;
+
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring;
 
 static FOO: StaticCell<u32> = StaticCell::new();
 
+static _PARTICLES: StaticCell<[physics::Particle; 5]> =
+    StaticCell::new();
+
+/// Static cells are used in this program to hold values we want
+/// to be on the stack, while also being able to juggle around a
+/// mutable reference for it. This has to be done because a value
+/// created inside a setup function will be dropped and not live long
+/// enough. It is technically possible to return it and pass it up the
+/// chain, but it complicates the interface and requires more copying.
 pub struct Resources {
-    pub foo: &'static mut u32,
+    pub particles: &'static mut [physics::Particle; 5],
 }
 
 /// State must be contained inside a wrapper. This is because
@@ -40,7 +51,15 @@ pub struct Meowbox {
 
 impl Meowbox {
     pub fn new(starting_state: State) -> Self {
-        let resources = Resources { foo: FOO.init(123) };
+        let resources = Resources {
+            particles: _PARTICLES.init([
+                physics::Particle::default(),
+                physics::Particle::default(),
+                physics::Particle::default(),
+                physics::Particle::default(),
+                physics::Particle::default(),
+            ]),
+        };
 
         Meowbox {
             state: starting_state,
@@ -52,6 +71,9 @@ impl Meowbox {
 
     pub async fn tick(&mut self) {
         self.check_for_shutdown_transition();
+
+        //*self.resources.foo += 1;
+        //info!("{}", self.resources.foo);
 
         match self.state {
             State::LightRing(_, _) => self.tick_light_ring().await,
