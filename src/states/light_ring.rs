@@ -9,6 +9,16 @@ use crate::{
 
 // Light Ring
 impl Meowbox {
+    pub(super) async fn tick_light_ring(&mut self) {
+        if let State::LightRing(stage, _) = self.state {
+            match stage {
+                Stage::Setup => self.setup_light_ring().await,
+                Stage::Execution => self.execute_light_ring().await,
+                Stage::Shutdown => self.shutdown_light_ring().await,
+            }
+        }
+    }
+
     pub(super) async fn setup_light_ring(&mut self) {
         // turn all leds off and go to next state
         all_leds_off().await;

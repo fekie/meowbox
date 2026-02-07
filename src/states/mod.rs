@@ -8,11 +8,8 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Timer};
 
-use super::hardware::{
-    self, BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
-};
-
 pub mod error_state;
+pub mod flow_field;
 pub mod light_ring;
 
 /// State must be contained inside a wrapper. This is because
@@ -46,26 +43,9 @@ impl Meowbox {
         self.check_for_shutdown_transition();
 
         match self.state {
-            State::LightRing(stage, _) => {
-                match stage {
-                    Stage::Setup => self.setup_light_ring().await,
-                    Stage::Execution => {
-                        self.execute_light_ring().await
-                    }
-                    // shutdown should
-                    Stage::Shutdown => {
-                        self.shutdown_light_ring().await
-                    }
-                }
-            }
-            State::ErrorState(etype) => match etype {
-                _ => {
-                    RED_LED.lock().await.as_mut().unwrap().toggle();
-                    error!("error state {:?}", etype);
-                    Timer::after(Duration::from_millis(200)).await;
-                }
-            },
-
+            State::LightRing(_, _) => self.tick_light_ring().await,
+            State::FlowField(_, _) => self.tick_flow_field().await,
+            State::ErrorState(_) => self.tick_error_state().await,
             // If we dont yet have the state implemented, go to the
             // error state.
             _ => {
