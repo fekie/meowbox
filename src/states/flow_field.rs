@@ -1,12 +1,15 @@
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_time::{Duration, Timer};
+use static_cell::StaticCell;
 
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
     states::{ErrorStateType, LightRingState, Meowbox, Stage, State},
     tasks::all_leds_off,
 };
+
+static CELL: StaticCell<u32> = StaticCell::new();
 
 impl Meowbox {
     pub(super) async fn tick_flow_field(&mut self) {}

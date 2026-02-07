@@ -7,10 +7,17 @@ use embassy_sync::{
     signal::Signal,
 };
 use embassy_time::{Duration, Timer};
+use static_cell::StaticCell;
 
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring;
+
+static FOO: StaticCell<u32> = StaticCell::new();
+
+pub struct Resources {
+    pub foo: &'static mut u32,
+}
 
 /// State must be contained inside a wrapper. This is because
 /// including next_state within State would cause an infinite size
@@ -28,14 +35,18 @@ pub struct Meowbox {
     /// `next_state` will not be set to None until the state is
     /// actually transisitoned.
     pub needs_to_shutdown: bool,
+    pub resources: Resources,
 }
 
 impl Meowbox {
     pub fn new(starting_state: State) -> Self {
+        let resources = Resources { foo: FOO.init(123) };
+
         Meowbox {
             state: starting_state,
             next_state: None,
             needs_to_shutdown: false,
+            resources,
         }
     }
 
