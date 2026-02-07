@@ -100,7 +100,11 @@ impl Meowbox {
                 self.state = State::FlowField(
                     Stage::Shutdown,
                     flow_field_state,
-                )
+                );
+            }
+            State::Debug(_, _, _) => {
+                self.state =
+                    State::ErrorState(ErrorStateType::Unknown);
             }
             // If we hit errorr state, dont change anything
             State::ErrorState(_) => {}
@@ -115,6 +119,9 @@ pub enum State {
     Menu(Stage),
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
+    /// Does both the light ring and the flow field. This is a good
+    /// way to see if the device is still "running" properly
+    Debug(Stage, LightRingState, FlowFieldState),
     ErrorState(ErrorStateType),
 }
 
