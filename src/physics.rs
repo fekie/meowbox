@@ -11,9 +11,16 @@ const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
 const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
 
 static _PARTICLES: StaticCell<[Particle; 5]> = StaticCell::new();
+static _FLOW_FIELD: StaticCell<FlowField> = StaticCell::new();
+static _ANGLE: StaticCell<f32> = StaticCell::new();
+
+// let mut flow_field = physics::FlowField::new();
+// let mut angle: f32 = 0.0;
 
 pub struct PhysicsResources {
     pub particles: &'static mut [Particle; 5],
+    pub flow_field: &'static mut FlowField,
+    pub angle: &'static mut f32,
 }
 
 impl PhysicsResources {
@@ -26,6 +33,10 @@ impl PhysicsResources {
                 Particle::default(),
                 Particle::default(),
             ]),
+
+            flow_field: _FLOW_FIELD.init(FlowField::new()),
+
+            angle: _ANGLE.init(0.0),
         }
     }
 }
