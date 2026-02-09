@@ -1,11 +1,14 @@
+use core::f32::consts::PI;
+
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_time::{Duration, Timer};
+use noise_perlin::perlin_2d;
 use static_cell::StaticCell;
 
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
-    physics,
+    physics::{self, SCREEN_WIDTH},
     states::{ErrorStateType, LightRingState, Meowbox, Stage, State},
     tasks::all_leds_off,
 };
@@ -24,15 +27,31 @@ impl Meowbox {
     }
 
     async fn setup_flow_field(&mut self) {
+        let physics_resources = &mut self.resources.physics_resources;
+
         // init positions of particles
-        self.resources.physics_resources.particles[1]
-            .set_pos(10.0, 10.0);
-        self.resources.physics_resources.particles[2]
-            .set_pos(20.0, 20.0);
-        self.resources.physics_resources.particles[3]
-            .set_pos(30.0, 30.0);
-        self.resources.physics_resources.particles[4]
-            .set_pos(127.0, 63.0);
+        physics_resources.particles[1].set_pos(10.0, 10.0);
+        physics_resources.particles[2].set_pos(20.0, 20.0);
+        physics_resources.particles[3].set_pos(30.0, 30.0);
+        physics_resources.particles[4].set_pos(127.0, 63.0);
+
+        for (i, chunk) in
+            physics_resources.flow_field.0.iter_mut().enumerate()
+        {
+            // a full rotation is 2pi, so we want to have each one
+            // generate a bit more of a rotation than the last
+
+            let y = i / SCREEN_WIDTH as usize;
+            let x = i % SCREEN_WIDTH as usize;
+
+            let perlin_angle =
+                perlin_2d(x as f32 * 0.03, y as f32 * 0.03)
+                    .clamp(-1.0, 1.0)
+                    * 2.0
+                    * PI;
+
+            *chunk = perlin_angle;
+        }
 
         self.state = State::LightRing(
             Stage::Execution,
@@ -41,6 +60,34 @@ impl Meowbox {
     }
 
     async fn execute_flow_field(&mut self) {
+        if let Err(e) = display.clear(BinaryColor::Off) {
+            info!("error on clear");
+        }
+
+        for (i, particle) in particles.iter_mut().enumerate() {
+            if let Err(e) = Pixel(
+                Point::new(particle.x() as i32, particle.y() as i32),
+                BinaryColor::On,
+            )
+            .draw(&mut display)
+            {
+                info!("error on draw");
+            }
+
+            particle.update_velocity(&flow_field);
+            particle.update_position();
+        }
+
+        if let Err(e) = display.flush().await {
+            info!("error on flush");
+        }
+
+        // make the angle be able to swing plus or minus pi/2
+        angle += ((physics::random(&rng) - 0.5) * 2.0) * PI / 2.0;
+
+        for chunk in &mut flow_field.0 {
+            *chunk += angle;
+        }
         // if let State::LightRing(_, light_ring_state) = &mut
         // self.state {
         //     match light_ring_state {

@@ -129,22 +129,22 @@ async fn main(spawner: Spawner) -> ! {
     //     .text_color(BinaryColor::On)
     //     .build();
 
-    let mut particles: [physics::Particle; 5] = [
-        physics::Particle::default(),
-        physics::Particle::default(),
-        physics::Particle::default(),
-        physics::Particle::default(),
-        physics::Particle::default(),
-    ];
+    // let mut particles: [physics::Particle; 5] = [
+    //     physics::Particle::default(),
+    //     physics::Particle::default(),
+    //     physics::Particle::default(),
+    //     physics::Particle::default(),
+    //     physics::Particle::default(),
+    // ];
 
-    particles[1].set_pos(10.0, 10.0);
-    particles[2].set_pos(20.0, 20.0);
-    particles[3].set_pos(30.0, 30.0);
-    particles[4].set_pos(127.0, 63.0);
+    // particles[1].set_pos(10.0, 10.0);
+    // particles[2].set_pos(20.0, 20.0);
+    // particles[3].set_pos(30.0, 30.0);
+    // particles[4].set_pos(127.0, 63.0);
 
     //display.flush().await.unwrap();
 
-    let mut angle: f32 = 0.0;
+    //let mut angle: f32 = 0.0;
 
     // We have a 128x64 screen, so we
     // will do a 8x4 grid flow field, where
@@ -153,23 +153,23 @@ async fn main(spawner: Spawner) -> ! {
     //let mut flow_field: [f32; FLOW_FIELD_SIZE] = [0.0;
     // FLOW_FIELD_SIZE];
 
-    let mut flow_field = physics::FlowField::new();
+    //let mut flow_field = physics::FlowField::new();
 
-    for (i, chunk) in flow_field.0.iter_mut().enumerate() {
-        // a full rotation is 2pi, so we want to have each one
-        // generate a bit more of a rotation than the last
+    // for (i, chunk) in flow_field.0.iter_mut().enumerate() {
+    //     // a full rotation is 2pi, so we want to have each one
+    //     // generate a bit more of a rotation than the last
 
-        let y = i / SCREEN_WIDTH as usize;
-        let x = i % SCREEN_WIDTH as usize;
+    //     let y = i / SCREEN_WIDTH as usize;
+    //     let x = i % SCREEN_WIDTH as usize;
 
-        let perlin_angle =
-            perlin_2d(x as f32 * 0.03, y as f32 * 0.03)
-                .clamp(-1.0, 1.0)
-                * 2.0
-                * PI;
+    //     let perlin_angle =
+    //         perlin_2d(x as f32 * 0.03, y as f32 * 0.03)
+    //             .clamp(-1.0, 1.0)
+    //             * 2.0
+    //             * PI;
 
-        *chunk = perlin_angle;
-    }
+    //     *chunk = perlin_angle;
+    // }
 
     let mut meowbox = Meowbox::new(State::LightRing(
         Stage::Setup,
@@ -183,34 +183,34 @@ async fn main(spawner: Spawner) -> ! {
         // goes and checks what the next routine is needed to
         // run
 
-        if let Err(e) = display.clear(BinaryColor::Off) {
-            info!("error on clear");
-        }
+        // if let Err(e) = display.clear(BinaryColor::Off) {
+        //     info!("error on clear");
+        // }
 
-        for (i, particle) in particles.iter_mut().enumerate() {
-            if let Err(e) = Pixel(
-                Point::new(particle.x() as i32, particle.y() as i32),
-                BinaryColor::On,
-            )
-            .draw(&mut display)
-            {
-                info!("error on draw");
-            }
+        // for (i, particle) in particles.iter_mut().enumerate() {
+        //     if let Err(e) = Pixel(
+        //         Point::new(particle.x() as i32, particle.y() as
+        // i32),         BinaryColor::On,
+        //     )
+        //     .draw(&mut display)
+        //     {
+        //         info!("error on draw");
+        //     }
 
-            particle.update_velocity(&flow_field);
-            particle.update_position();
-        }
+        //     particle.update_velocity(&flow_field);
+        //     particle.update_position();
+        // }
 
-        if let Err(e) = display.flush().await {
-            info!("error on flush");
-        }
+        // if let Err(e) = display.flush().await {
+        //     info!("error on flush");
+        // }
 
-        // make the angle be able to swing plus or minus pi/2
-        angle += ((physics::random(&rng) - 0.5) * 2.0) * PI / 2.0;
+        // // make the angle be able to swing plus or minus pi/2
+        // angle += ((physics::random(&rng) - 0.5) * 2.0) * PI / 2.0;
 
-        for chunk in &mut flow_field.0 {
-            *chunk += angle;
-        }
+        // for chunk in &mut flow_field.0 {
+        //     *chunk += angle;
+        // }
 
         //non_mutex_peripherals.simple_speaker.toggle();
 
