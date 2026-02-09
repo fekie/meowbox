@@ -2,12 +2,33 @@ use core::f32::consts::PI;
 
 use esp_hal::rng::Rng;
 use micromath::F32Ext;
+use static_cell::StaticCell;
 
 pub const SCREEN_WIDTH: u32 = 128;
 pub const SCREEN_HEIGHT: u32 = 64;
 const FLOW_FIELD_SIZE: usize = 512; // total amount of chunks, 32 x 16
 const FLOW_FORCE_MAGNITUDE_MULTIPLIER: f32 = 3.5;
 const FLOW_CHUNK_SIZE: u32 = 4; // pixel size of chunks
+
+static _PARTICLES: StaticCell<[Particle; 5]> = StaticCell::new();
+
+pub struct PhysicsResources {
+    pub particles: &'static mut [Particle; 5],
+}
+
+impl PhysicsResources {
+    pub fn new() -> Self {
+        Self {
+            particles: _PARTICLES.init([
+                Particle::default(),
+                Particle::default(),
+                Particle::default(),
+                Particle::default(),
+                Particle::default(),
+            ]),
+        }
+    }
+}
 
 /// Represents a one pixel particle. Each setter will adjust the
 /// position so the particle wraps to the other side of the screen.

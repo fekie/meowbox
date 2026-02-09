@@ -25,10 +25,14 @@ impl Meowbox {
 
     async fn setup_flow_field(&mut self) {
         // init positions of particles
-        self.resources.particles[1].set_pos(10.0, 10.0);
-        self.resources.particles[2].set_pos(20.0, 20.0);
-        self.resources.particles[3].set_pos(30.0, 30.0);
-        self.resources.particles[4].set_pos(127.0, 63.0);
+        self.resources.physics_resources.particles[1]
+            .set_pos(10.0, 10.0);
+        self.resources.physics_resources.particles[2]
+            .set_pos(20.0, 20.0);
+        self.resources.physics_resources.particles[3]
+            .set_pos(30.0, 30.0);
+        self.resources.physics_resources.particles[4]
+            .set_pos(127.0, 63.0);
 
         self.state = State::LightRing(
             Stage::Execution,

@@ -9,16 +9,13 @@ use embassy_sync::{
 use embassy_time::{Duration, Timer};
 use static_cell::StaticCell;
 
-use crate::physics;
+use crate::physics::{self, PhysicsResources};
 
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring;
 
 static FOO: StaticCell<u32> = StaticCell::new();
-
-static _PARTICLES: StaticCell<[physics::Particle; 5]> =
-    StaticCell::new();
 
 /// Static cells are used in this program to hold values we want
 /// to be on the stack, while also being able to juggle around a
@@ -27,7 +24,8 @@ static _PARTICLES: StaticCell<[physics::Particle; 5]> =
 /// enough. It is technically possible to return it and pass it up the
 /// chain, but it complicates the interface and requires more copying.
 pub struct Resources {
-    pub particles: &'static mut [physics::Particle; 5],
+    pub physics_resources: PhysicsResources,
+    //pub particles: &'static mut [physics::Particle; 5],
 }
 
 /// State must be contained inside a wrapper. This is because
@@ -52,13 +50,7 @@ pub struct Meowbox {
 impl Meowbox {
     pub fn new(starting_state: State) -> Self {
         let resources = Resources {
-            particles: _PARTICLES.init([
-                physics::Particle::default(),
-                physics::Particle::default(),
-                physics::Particle::default(),
-                physics::Particle::default(),
-                physics::Particle::default(),
-            ]),
+            physics_resources: PhysicsResources::new(),
         };
 
         Meowbox {
