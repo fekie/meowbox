@@ -77,7 +77,7 @@ pub struct NonMutexPeripherals {
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,
     pub right_rotary_b: Input<'static>,
-    pub simple_speaker: Output<'static>,
+    //pub simple_speaker: Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -93,97 +93,96 @@ pub async fn init_peripherals(
     let pull_up_config = InputConfig::default().with_pull(Pull::Up);
     let output_config_default = OutputConfig::default();
 
-    let right_button = Input::new(peripherals.GPIO14, pull_up_config);
+    let left_button = Input::new(peripherals.GPIO5, pull_up_config);
 
-    let left_button = Input::new(peripherals.GPIO4, pull_up_config);
+    let right_button = Input::new(peripherals.GPIO8, pull_up_config);
 
     let left_button_light = Output::new(
-        peripherals.GPIO15,
+        peripherals.GPIO4,
         Level::Low,
         output_config_default,
     );
     let right_button_light = Output::new(
-        peripherals.GPIO9,
-        Level::Low,
-        output_config_default,
-    );
-
-    let buzzer = Output::new(
         peripherals.GPIO12,
         Level::Low,
         output_config_default,
     );
 
+    let buzzer = Output::new(
+        peripherals.GPIO16,
+        Level::Low,
+        output_config_default,
+    );
+
     let rotary_switch_left =
-        Input::new(peripherals.GPIO16, pull_up_config);
+        Input::new(peripherals.GPIO18, pull_up_config);
 
     let rotary_switch_right =
-        Input::new(peripherals.GPIO10, pull_up_config);
+        Input::new(peripherals.GPIO17, pull_up_config);
 
     let red_led = Output::new(
-        peripherals.GPIO6,
+        peripherals.GPIO41,
         Level::Low,
         output_config_default,
     );
     let green_led = Output::new(
-        peripherals.GPIO2,
+        peripherals.GPIO15,
         Level::Low,
         output_config_default,
     );
     let blue_led = Output::new(
-        peripherals.GPIO21,
+        peripherals.GPIO14,
         Level::Low,
         output_config_default,
     );
     let yellow_led = Output::new(
-        peripherals.GPIO11,
+        peripherals.GPIO9,
         Level::Low,
         output_config_default,
     );
     let white_led = Output::new(
-        peripherals.GPIO7,
+        peripherals.GPIO11,
         Level::Low,
         output_config_default,
     );
 
-    let pbuzzer_top_left = Output::new(
-        peripherals.GPIO1,
-        Level::High,
-        output_config_default,
-    );
-    // let pbuzzer_top_right = Output::new(
-    //     peripherals.GPIO20,
+    // let pbuzzer_top_left = Output::new(
+    //     peripherals.GPIO1,
+    //     Level::High,
+    //     output_config_default,
+    // );
+    // // let pbuzzer_top_right = Output::new(
+    // //     peripherals.GPIO20,
+    // //     Level::Low,
+    // //     output_config_default,
+    // // );
+    // let pbuzzer_bottom_left = Output::new(
+    //     peripherals.GPIO5,
     //     Level::Low,
     //     output_config_default,
     // );
-    let pbuzzer_bottom_left = Output::new(
-        peripherals.GPIO5,
-        Level::Low,
-        output_config_default,
-    );
-    let pbuzzer_bottom_right = Output::new(
-        peripherals.GPIO13,
-        Level::Low,
-        output_config_default,
-    );
+    // let pbuzzer_bottom_right = Output::new(
+    //     peripherals.GPIO13,
+    //     Level::Low,
+    //     output_config_default,
+    // );
 
     Timer::after(Duration::from_millis(500)).await;
 
-    let left_rotary_a =
-        Input::new(peripherals.GPIO42, pull_up_config);
+    let left_rotary_a = Input::new(peripherals.GPIO2, pull_up_config);
     let left_rotary_b =
-        Input::new(peripherals.GPIO41, pull_up_config);
+        Input::new(peripherals.GPIO42, pull_up_config);
 
     let right_rotary_a =
-        Input::new(peripherals.GPIO3, pull_up_config);
+        Input::new(peripherals.GPIO10, pull_up_config);
     let right_rotary_b =
-        Input::new(peripherals.GPIO46, pull_up_config);
+        Input::new(peripherals.GPIO13, pull_up_config);
 
-    let simple_speaker = Output::new(
-        peripherals.GPIO47,
-        Level::Low,
-        output_config_default,
-    );
+    // let simple_speaker = Output::new(
+    //     peripherals.GPIO47,
+    //     Level::Low,
+    //     output_config_default,
+    // );
 
     //Timer::after(Duration::from_millis(500)).await;
 
@@ -196,10 +195,10 @@ pub async fn init_peripherals(
         *(ROTARY_SWITCH_LEFT.lock().await) = Some(rotary_switch_left);
         *(ROTARY_SWITCH_RIGHT.lock().await) =
             Some(rotary_switch_right);
-        *(PBUZZER_TOP_LEFT.lock().await) = Some(pbuzzer_top_left);
+        // *(PBUZZER_TOP_LEFT.lock().await) = Some(pbuzzer_top_left);
         //*(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
-        *(PBUZZER_BOTTOM_LEFT.lock().await) =
-            Some(pbuzzer_bottom_left);
+        // *(PBUZZER_BOTTOM_LEFT.lock().await) =
+        //     Some(pbuzzer_bottom_left);
         // *(PBUZZER_BOTTOM_RIGHT.lock().await) =
         //     Some(pbuzzer_bottom_right);
 
@@ -216,8 +215,8 @@ pub async fn init_peripherals(
         I2cConfig::default().with_frequency(Rate::from_khz(400)),
     )
     .unwrap()
-    .with_scl(peripherals.GPIO17)
-    .with_sda(peripherals.GPIO18)
+    .with_scl(peripherals.GPIO6)
+    .with_sda(peripherals.GPIO7)
     .into_async();
 
     let interface = I2CDisplayInterface::new(i2c_bus);
@@ -263,6 +262,6 @@ pub async fn init_peripherals(
         left_rotary_b,
         right_rotary_a,
         right_rotary_b,
-        simple_speaker,
+        //simple_speaker,
     }
 }
