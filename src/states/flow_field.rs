@@ -60,34 +60,35 @@ impl Meowbox {
     }
 
     async fn execute_flow_field(&mut self) {
-        if let Err(e) = display.clear(BinaryColor::Off) {
-            info!("error on clear");
-        }
+        // if let Err(e) = display.clear(BinaryColor::Off) {
+        //     info!("error on clear");
+        // }
 
-        for (i, particle) in particles.iter_mut().enumerate() {
-            if let Err(e) = Pixel(
-                Point::new(particle.x() as i32, particle.y() as i32),
-                BinaryColor::On,
-            )
-            .draw(&mut display)
-            {
-                info!("error on draw");
-            }
+        // for (i, particle) in particles.iter_mut().enumerate() {
+        //     if let Err(e) = Pixel(
+        //         Point::new(particle.x() as i32, particle.y() as
+        // i32),         BinaryColor::On,
+        //     )
+        //     .draw(&mut display)
+        //     {
+        //         info!("error on draw");
+        //     }
 
-            particle.update_velocity(&flow_field);
-            particle.update_position();
-        }
+        //     particle.update_velocity(&flow_field);
+        //     particle.update_position();
+        // }
 
-        if let Err(e) = display.flush().await {
-            info!("error on flush");
-        }
+        // if let Err(e) = display.flush().await {
+        //     info!("error on flush");
+        // }
 
-        // make the angle be able to swing plus or minus pi/2
-        angle += ((physics::random(&rng) - 0.5) * 2.0) * PI / 2.0;
+        // // make the angle be able to swing plus or minus pi/2
+        // angle += ((physics::random(&rng) - 0.5) * 2.0) * PI / 2.0;
 
-        for chunk in &mut flow_field.0 {
-            *chunk += angle;
-        }
+        // for chunk in &mut flow_field.0 {
+        //     *chunk += angle;
+        // }
+
         // if let State::LightRing(_, light_ring_state) = &mut
         // self.state {
         //     match light_ring_state {
