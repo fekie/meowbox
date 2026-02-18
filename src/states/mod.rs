@@ -14,6 +14,7 @@ use crate::physics::{self, PhysicsResources};
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring;
+pub mod menu_state;
 
 static FOO: StaticCell<u32> = StaticCell::new();
 
@@ -71,6 +72,7 @@ impl Meowbox {
             State::LightRing(_, _) => self.tick_light_ring().await,
             State::FlowField(_, _) => self.tick_flow_field().await,
             State::ErrorState(_) => self.tick_error_state().await,
+            State::Menu(_, _) => self.tick_menu_state().await,
             // If we dont yet have the state implemented, go to the
             // error state.
             _ => {
@@ -92,8 +94,8 @@ impl Meowbox {
         // If there is a need to shutdown, then set to shutdown.
         // Annoying, a match tree has to be used here.
         match self.state {
-            State::Menu(_) => {
-                self.state = State::Menu(Stage::Shutdown);
+            State::Menu(_, current) => {
+                self.state = State::Menu(Stage::Shutdown, current);
             }
             State::LightRing(_, light_ring_state) => {
                 self.state = State::LightRing(
@@ -117,11 +119,20 @@ impl Meowbox {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MenuState {
+    /// The amount of scroll (starting from the top) that the screen
+    /// needs to display.
+    scroll: usize,
+    /// The currently index of the currently covered item.
+    index: usize,
+}
+
 /// The overarching state of the machine that specifies which routines
 /// it is currently running. States can contain smaller substates.
 #[derive(Clone, Copy, Debug)]
 pub enum State {
-    Menu(Stage),
+    Menu(Stage, MenuState),
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
     /// Does both the light ring and the flow field. This is a good

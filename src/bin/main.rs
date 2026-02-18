@@ -21,7 +21,7 @@ use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println as _;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
-    states::{LightRingState, Meowbox, Stage, State},
+    states::{LightRingState, MenuState, Meowbox, Stage, State},
 };
 use noise_perlin::perlin_2d;
 use ssd1306::prelude::*;
@@ -171,7 +171,10 @@ async fn main(spawner: Spawner) -> ! {
         *chunk = perlin_angle;
     }
 
-    let state = State::LightRing(Stage::Setup, LightRingState::White);
+    //let state = State::LightRing(Stage::Setup,
+    // LightRingState::White);
+
+    let state = State::Menu(Stage::Setup, MenuState::default());
 
     // let state = State::FlowField(
     //     Stage::Setup,
