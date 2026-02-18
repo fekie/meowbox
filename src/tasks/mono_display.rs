@@ -110,7 +110,8 @@ impl MonoDisplay {
             //             x.into_buffered_graphics_mode(),
             //         )
             //     }
-            _ => {} //_ => {}
+            MonoDisplayCommand::SwitchToGraphics
+            | MonoDisplayCommand::SwitchToTerminal => {}
         }
     }
 }
