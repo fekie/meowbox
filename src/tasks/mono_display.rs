@@ -17,7 +17,15 @@ use ssd1306::{
     prelude::*,
 };
 
-// The available commands
+/// A channel to send commands to the display.
+pub static MONO_DISPLAY_CH: Channel<
+    CriticalSectionRawMutex,
+    MonoDisplayCommand,
+    20,
+> = Channel::new();
+
+// The available commands to send to the display
+#[derive(Clone, Copy)]
 pub enum MonoDisplayCommand {
     Init,
     Clear,
@@ -25,91 +33,22 @@ pub enum MonoDisplayCommand {
     SwitchToGraphics,
 }
 
-static MONO_DISPLAY_CH: Channel<
-    CriticalSectionRawMutex,
-    MonoDisplayCommand,
-    20,
-> = Channel::new();
-
 #[embassy_executor::task]
-async fn display_task(mut display: MonoDisplay) {
+pub async fn display_task(mut display: MonoDisplay) {
     loop {
-        match MONO_DISPLAY_CH.receive().await {
-            MonoDisplayCommand::Init => loop {
-                match &mut display {
-                    MonoDisplay::Terminal(x) => {
-                        match x.init().await {
-                            Ok(_) => {
-                                info!(
-                                    "display initialized (terminal)!"
-                                );
-                                break;
-                            }
-                            Err(_) => {
-                                error!(
-                                    "display init failed (terminal)!"
-                                );
-                                Timer::after(Duration::from_millis(
-                                    200,
-                                ))
-                                .await;
-                            }
-                        }
-                    }
-                    MonoDisplay::Graphics(x) => {
-                        match x.init().await {
-                            Ok(_) => {
-                                info!(
-                                    "display initialized (graphics)!"
-                                );
-                                break;
-                            }
-                            Err(_) => {
-                                error!(
-                                    "display init failed (graphics)!"
-                                );
-                                Timer::after(Duration::from_millis(
-                                    200,
-                                ))
-                                .await;
-                            }
-                        }
-                    }
-                }
-            },
-            MonoDisplayCommand::Clear => match &mut display {
-                MonoDisplay::Terminal(x) => {
-                    if x.clear().await.is_err() {
-                        info!("error on clear");
-                    }
-                }
-                MonoDisplay::Graphics(x) => {
-                    if x.clear(BinaryColor::Off).is_err() {
-                        info!("error on clear");
-                    }
-                    if x.flush().await.is_err() {
-                        info!("error on flush");
-                    }
-                }
-            },
-            MonoDisplayCommand::SwitchToTerminal => {
-                display = match display {
-                    MonoDisplay::Graphics(x) => {
-                        MonoDisplay::Terminal(x.into_terminal_mode())
-                    }
-                    other => other,
-                }
-            }
+        let cmd = MONO_DISPLAY_CH.receive().await;
+
+        // do a check to see if the command was to switch operating
+        // modes (which requires ownership). Otherwise, execute the
+        // command as normal.
+        match cmd {
             MonoDisplayCommand::SwitchToGraphics => {
-                display = match display {
-                    MonoDisplay::Terminal(x) => {
-                        MonoDisplay::Graphics(
-                            x.into_buffered_graphics_mode(),
-                        )
-                    }
-                    other => other,
-                }
-            } //_ => {}
+                display = display.to_graphics().await;
+            }
+            MonoDisplayCommand::SwitchToTerminal => {
+                display = display.to_terminal().await;
+            }
+            _ => display.process_command(cmd).await,
         }
     }
 }
@@ -150,6 +89,77 @@ impl MonoDisplay {
                 Self::Graphics(d.into_buffered_graphics_mode())
             }
             other => other,
+        }
+    }
+
+    async fn process_command(&mut self, cmd: MonoDisplayCommand) {
+        match cmd {
+            MonoDisplayCommand::Init => self.cmd_init().await,
+            MonoDisplayCommand::Clear => self.cmd_clear().await,
+            // MonoDisplayCommand::SwitchToTerminal => match self {
+            //     MonoDisplay::Graphics(x) => {
+            //         *self =
+            //
+            // MonoDisplay::Terminal(x.into_terminal_mode())
+            //     }
+            //     _ => {}
+            // },
+            // MonoDisplayCommand::SwitchToGraphics => match self {
+            //     MonoDisplay::Terminal(x) => {
+            //         *self = MonoDisplay::Graphics(
+            //             x.into_buffered_graphics_mode(),
+            //         )
+            //     }
+            _ => {} //_ => {}
+        }
+    }
+}
+
+impl MonoDisplay {
+    async fn cmd_init(&mut self) {
+        loop {
+            match self {
+                MonoDisplay::Terminal(x) => match x.init().await {
+                    Ok(_) => {
+                        info!("display initialized (terminal)!");
+                        break;
+                    }
+                    Err(_) => {
+                        error!("display init failed (terminal)!");
+                        Timer::after(Duration::from_millis(200))
+                            .await;
+                    }
+                },
+                MonoDisplay::Graphics(x) => match x.init().await {
+                    Ok(_) => {
+                        info!("display initialized (graphics)!");
+                        break;
+                    }
+                    Err(_) => {
+                        error!("display init failed (graphics)!");
+                        Timer::after(Duration::from_millis(200))
+                            .await;
+                    }
+                },
+            }
+        }
+    }
+
+    async fn cmd_clear(&mut self) {
+        match self {
+            MonoDisplay::Terminal(x) => {
+                if x.clear().await.is_err() {
+                    info!("error on clear");
+                }
+            }
+            MonoDisplay::Graphics(x) => {
+                if x.clear(BinaryColor::Off).is_err() {
+                    info!("error on clear");
+                }
+                if x.flush().await.is_err() {
+                    info!("error on flush");
+                }
+            }
         }
     }
 }

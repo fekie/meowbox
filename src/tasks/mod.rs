@@ -7,6 +7,7 @@ use embassy_sync::{
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio::Input;
 use heapless::Vec;
+pub use mono_display::display_task;
 pub use rotary::{
     left_rotary_rotation_watcher, right_rotary_rotation_watcher,
     rotary_switch_left_event, rotary_switch_right_event,

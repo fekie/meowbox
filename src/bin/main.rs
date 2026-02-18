@@ -37,7 +37,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 use meowbox::{
     physics::{self, SCREEN_WIDTH},
     tasks::{
-        led_rotation, left_button_event,
+        display_task, led_rotation, left_button_event,
         left_rotary_rotation_watcher, play_sequence_listener,
         right_button_event, right_rotary_rotation_watcher,
         rotary_switch_left_event, rotary_switch_right_event,
@@ -101,6 +101,9 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_a,
         non_mutex_peripherals.left_rotary_b,
     ));
+
+    // TODO: spawn this task
+    //let _ = spawner.spawn(display_task());
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
