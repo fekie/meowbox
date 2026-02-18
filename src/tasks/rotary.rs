@@ -78,7 +78,8 @@ pub async fn left_rotary_rotation_watcher(
     left_rotary_b: Input<'static>,
 ) {
     // start an encoder that we set the values of manually
-    let mut raw_encoder = QuadratureTableMode::new(4);
+
+    let mut raw_encoder = QuadratureTableMode::new(3);
     let _dir = raw_encoder.update(false, false);
 
     loop {
@@ -108,7 +109,9 @@ pub async fn right_rotary_rotation_watcher(
     right_rotary_b: Input<'static>,
 ) {
     // start an encoder that we set the values of manually
-    let mut raw_encoder = QuadratureTableMode::new(4);
+    // this used to be 4, but it would sometimes miss count.
+    // even still, any value of this usually overcounts
+    let mut raw_encoder = QuadratureTableMode::new(3);
     let _dir = raw_encoder.update(false, false);
 
     loop {
@@ -120,7 +123,7 @@ pub async fn right_rotary_rotation_watcher(
             Direction::Clockwise => {
                 BLUE_LED.lock().await.as_mut().unwrap().set_high();
                 GREEN_LED.lock().await.as_mut().unwrap().set_low();
-                //info!("clockwise");
+                info!("clockwise");
                 //Timer::after(Duration::from_millis(200)).await;
 
                 // Increment some value
@@ -129,7 +132,7 @@ pub async fn right_rotary_rotation_watcher(
                 GREEN_LED.lock().await.as_mut().unwrap().set_high();
                 BLUE_LED.lock().await.as_mut().unwrap().set_low();
                 //Timer::after(Duration::from_millis(200)).await;
-
+                info!("counterclockwise");
                 // Decrement some value
             }
             Direction::None => {
