@@ -20,6 +20,7 @@ use crate::hardware::{
     BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
 };
 
+pub mod mono_display;
 pub mod rotary;
 
 pub static BUZZER_SIGNAL: Signal<

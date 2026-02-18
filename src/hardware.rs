@@ -21,6 +21,8 @@ use esp_hal::{
 };
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 
+use crate::tasks::mono_display::MonoDisplay;
+
 pub type ButtonType =
     Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
 pub static RIGHT_BUTTON: ButtonType = Mutex::new(None);
@@ -62,6 +64,12 @@ pub static WHITE_LED: LEDType = Mutex::new(None);
 
 pub static LED_ARRAY: [&'static LEDType; 5] =
     [&RED_LED, &GREEN_LED, &BLUE_LED, &YELLOW_LED, &WHITE_LED];
+
+pub type MonoDisplayType =
+    Mutex<CriticalSectionRawMutex, Option<MonoDisplay>>;
+// pub static DISPLAY: MonoDisplayType = Mutex::new(None);
+static BAR: static_cell::StaticCell<MonoDisplayType> =
+    static_cell::StaticCell::new();
 
 use esp_hal::peripherals::Peripherals;
 
