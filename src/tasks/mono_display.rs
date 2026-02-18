@@ -11,6 +11,7 @@ use embedded_graphics::{
     text::{Baseline, Text},
 };
 use esp_hal::i2c::master::{Config as I2cConfig, I2c};
+use heapless::String;
 use ssd1306::{
     I2CDisplayInterface, Ssd1306Async,
     mode::{BufferedGraphicsModeAsync, TerminalModeAsync},
@@ -25,12 +26,18 @@ pub static MONO_DISPLAY_CH: Channel<
 > = Channel::new();
 
 // The available commands to send to the display
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum MonoDisplayCommand {
+    /// Usable by Graphics and Terminal
     Init,
+    /// Usable by Graphics and Terminal
     Clear,
+    /// Usable by Graphics
     SwitchToTerminal,
+    /// Usable by Terminal
     SwitchToGraphics,
+    /// Write string. Usable by Terminal
+    WriteStr(String<10>),
 }
 
 #[embassy_executor::task]
@@ -96,20 +103,9 @@ impl MonoDisplay {
         match cmd {
             MonoDisplayCommand::Init => self.cmd_init().await,
             MonoDisplayCommand::Clear => self.cmd_clear().await,
-            // MonoDisplayCommand::SwitchToTerminal => match self {
-            //     MonoDisplay::Graphics(x) => {
-            //         *self =
-            //
-            // MonoDisplay::Terminal(x.into_terminal_mode())
-            //     }
-            //     _ => {}
-            // },
-            // MonoDisplayCommand::SwitchToGraphics => match self {
-            //     MonoDisplay::Terminal(x) => {
-            //         *self = MonoDisplay::Graphics(
-            //             x.into_buffered_graphics_mode(),
-            //         )
-            //     }
+            MonoDisplayCommand::WriteStr(s) => {
+                self.cmd_write_str(s).await
+            }
             MonoDisplayCommand::SwitchToGraphics
             | MonoDisplayCommand::SwitchToTerminal => {}
         }
@@ -160,6 +156,15 @@ impl MonoDisplay {
                 if x.flush().await.is_err() {
                     info!("error on flush");
                 }
+            }
+        }
+    }
+
+    async fn cmd_write_str(&mut self, s: String<10>) {
+        if let MonoDisplay::Terminal(x) = self {
+            match x.write_str(&s).await {
+                Ok(()) => info!("string written to display!"),
+                Err(_) => info!("error writing string to display."),
             }
         }
     }
