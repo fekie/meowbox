@@ -21,7 +21,9 @@ use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println as _;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
-    states::{LightRingState, MenuState, Meowbox, Stage, State},
+    states::{
+        MenuState, Meowbox, Stage, State, light_ring::LightRingState,
+    },
 };
 use noise_perlin::perlin_2d;
 use ssd1306::prelude::*;

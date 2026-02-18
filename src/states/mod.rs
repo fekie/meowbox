@@ -7,6 +7,7 @@ use embassy_sync::{
     signal::Signal,
 };
 use embassy_time::{Duration, Timer};
+use light_ring::LightRingState;
 use static_cell::StaticCell;
 
 use crate::physics::{self, PhysicsResources};
@@ -165,16 +166,6 @@ pub enum ErrorStateType {
     Unknown,
     StateNotImplemented,
     NextStateNotSpecified,
-}
-
-#[derive(Default, Clone, Copy, Debug)]
-pub enum LightRingState {
-    #[default]
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    White,
 }
 
 /// Variations of the flow field state.

@@ -1,10 +1,9 @@
 use defmt::info;
 use embassy_time::{Duration, Timer};
 
-use super::{Meowbox, State};
+use super::{Meowbox, State, light_ring::LightRingState};
 use crate::{
-    hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
-    states::{ErrorStateType, LightRingState, MenuState, Stage},
+    states::{ErrorStateType, MenuState, Stage},
     tasks::all_leds_off,
 };
 

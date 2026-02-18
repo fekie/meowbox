@@ -3,9 +3,19 @@ use embassy_time::{Duration, Timer};
 use super::{Meowbox, State};
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
-    states::{ErrorStateType, LightRingState, Stage},
+    states::{ErrorStateType, Stage},
     tasks::all_leds_off,
 };
+
+#[derive(Default, Clone, Copy, Debug)]
+pub enum LightRingState {
+    #[default]
+    Red,
+    Green,
+    Blue,
+    Yellow,
+    White,
+}
 
 // Light Ring
 impl Meowbox {
