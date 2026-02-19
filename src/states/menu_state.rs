@@ -32,6 +32,8 @@ impl Meowbox {
         // then init
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
 
+        MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
         // send a string to screen
         let s: String<10> = String::try_from("meowbox").unwrap();
         MONO_DISPLAY_CH.send(MonoDisplayCommand::WriteStr(s)).await;

@@ -24,6 +24,9 @@ use meowbox::{
     states::{
         MenuState, Meowbox, Stage, State, light_ring::LightRingState,
     },
+    tasks::mono_display::{
+        MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
+    },
 };
 use noise_perlin::perlin_2d;
 use ssd1306::prelude::*;
@@ -61,9 +64,12 @@ async fn main(spawner: Spawner) -> ! {
     //non_mutex_peripherals.timg1.wdt.enable();
     //non_mutex_peripherals.timg1.wdt.feed();
 
-    let mut display = non_mutex_peripherals.display;
+    //let mut display = non_mutex_peripherals.display;
 
     let rng = Rng::new();
+
+    let mono_display =
+        MonoDisplay::Graphics(non_mutex_peripherals.display);
 
     info!("Embassy initialized!");
 
@@ -103,24 +109,27 @@ async fn main(spawner: Spawner) -> ! {
     ));
 
     // TODO: spawn this task
-    //let _ = spawner.spawn(display_task());
+    let _ = spawner.spawn(display_task(mono_display));
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
     Timer::after(Duration::from_millis(500)).await;
+
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
+
     //display.init().await.expect("failed to initialize display");
-    loop {
-        match display.init().await {
-            Ok(_) => {
-                info!("display initialized!");
-                break;
-            }
-            Err(e) => {
-                error!("display init failed");
-                Timer::after(Duration::from_millis(200)).await;
-            }
-        }
-    }
+    // loop {
+    //     match display.init().await {
+    //         Ok(_) => {
+    //             info!("display initialized!");
+    //             break;
+    //         }
+    //         Err(e) => {
+    //             error!("display init failed");
+    //             Timer::after(Duration::from_millis(200)).await;
+    //         }
+    //     }
+    // }
 
     //info!("display initialized!");
     Timer::after(Duration::from_millis(500)).await;
