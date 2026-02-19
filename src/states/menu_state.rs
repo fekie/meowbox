@@ -38,6 +38,49 @@ impl Meowbox {
         let s: String<10> = String::try_from("meowbox").unwrap();
         MONO_DISPLAY_CH.send(MonoDisplayCommand::WriteStr(s)).await;
 
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \non!").unwrap(),
+            ))
+            .await;
+
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \naon!").unwrap(),
+            ))
+            .await;
+
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \nbon!").unwrap(),
+            ))
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \ncon!").unwrap(),
+            ))
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \ndon!").unwrap(),
+            ))
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \neon!").unwrap(),
+            ))
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \nfon!").unwrap(),
+            ))
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \ngon!").unwrap(),
+            ))
+            .await;
+
         // turn all leds off and go to next state
         all_leds_off().await;
         self.state =
