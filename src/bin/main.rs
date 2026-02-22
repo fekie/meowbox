@@ -17,8 +17,11 @@ use embedded_graphics::{
     prelude::{Point, *},
     text::{Baseline, Text},
 };
+use embedded_storage::{ReadStorage, Storage};
 use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
 use esp_println as _;
+use esp_println::println;
+use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
     states::{
@@ -59,6 +62,30 @@ async fn main(spawner: Spawner) -> ! {
 
     let mut non_mutex_peripherals =
         hardware::init_peripherals(peripherals).await;
+
+    let flash_addr = 0x9000;
+    let mut bytes = [0u8; 32];
+    let mut flash = FlashStorage::new(non_mutex_peripherals.flash);
+
+    println!("Flash size = {}", flash.capacity());
+
+    let foo = [4, 5, 6, 12, 13];
+
+    flash.write(flash_addr, &foo).unwrap();
+
+    let mut meow = [0, 0, 0, 0, 0];
+
+    flash.read(flash_addr, &mut meow).unwrap();
+
+    let foo2 = [7, 8, 9];
+
+    flash.write(flash_addr, &foo2).unwrap();
+    flash.read(flash_addr, &mut meow).unwrap();
+
+    println!(
+        "{} {} {} {} {}",
+        meow[0], meow[1], meow[2], meow[3], meow[4]
+    );
 
     // Enable the watchdog timer and feed it for the first time
     //non_mutex_peripherals.timg1.wdt.enable();

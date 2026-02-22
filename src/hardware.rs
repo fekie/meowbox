@@ -16,6 +16,7 @@ use esp_hal::{
         channel::{self, ChannelIFace},
         timer::{self, TimerIFace},
     },
+    peripherals::FLASH,
     time::Rate,
     timer::timg::TimerGroup,
 };
@@ -85,7 +86,9 @@ pub struct NonMutexPeripherals {
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,
     pub right_rotary_b: Input<'static>,
-    //pub simple_speaker: Output<'static>,
+    pub flash: FLASH<'static>,
+    //pub simple_speaker:
+    // Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -247,20 +250,7 @@ pub async fn init_peripherals(
         })
         .unwrap();
 
-    let buzzer_pin = peripherals.GPIO20;
-
-    let mut channel =
-        ledc.channel(channel::Number::Channel0, buzzer_pin);
-
-    channel
-        .configure(channel::config::Config {
-            timer: &timer,
-            duty_pct: 50,
-            drive_mode: DriveMode::PushPull,
-        })
-        .unwrap();
-
-    channel.set_duty(50).unwrap();
+    let flash = peripherals.FLASH;
 
     Timer::after(Duration::from_millis(5000)).await;
 
@@ -270,6 +260,6 @@ pub async fn init_peripherals(
         left_rotary_b,
         right_rotary_a,
         right_rotary_b,
-        //simple_speaker,
+        flash, //simple_speaker,
     }
 }
