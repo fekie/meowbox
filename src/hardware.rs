@@ -17,10 +17,15 @@ use esp_hal::{
         timer::{self, TimerIFace},
     },
     peripherals::FLASH,
+    rmt::{PulseCode, Rmt},
     time::Rate,
     timer::timg::TimerGroup,
 };
+use esp_hal_smartled::{SmartLedsAdapter, buffer_size};
+use esp_println::println;
+use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
+use static_cell::StaticCell;
 
 use crate::tasks::mono_display::MonoDisplay;
 
@@ -252,7 +257,41 @@ pub async fn init_peripherals(
 
     let flash = peripherals.FLASH;
 
-    Timer::after(Duration::from_millis(5000)).await;
+    static RMT_BUFFER: StaticCell<[PulseCode; buffer_size(1)]> =
+        StaticCell::new();
+
+    let rmt = Rmt::new(peripherals.RMT, Rate::from_mhz(80)).unwrap();
+
+    let neopixel_pin = Output::new(
+        peripherals.GPIO48,
+        Level::Low,
+        output_config_default,
+    );
+
+    let rmt_buffer =
+        RMT_BUFFER.init([PulseCode::end_marker(); buffer_size(1)]);
+
+    let mut neopixel =
+        SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
+
+    // turn red
+    neopixel.write([RGB8 { r: 20, g: 0, b: 0 }]).unwrap();
+
+    // let led_pin = Output::new(
+    //     peripherals.GPIO48,
+    //     Level::High,
+    //     output_config_default,
+    // );
+
+    //let neopixel_pin = peripherals.GPIO38.into_push_pull_output();
+
+    //let channel = peripherals.rmt.channel0;
+    //let mut ws2812 = Ws2812Esp32Rmt::new(channel,
+    // led_pin).unwrap();
+
+    //let mut hue = unsafe { esp_random() } as u8;
+
+    Timer::after(Duration::from_millis(1000)).await;
 
     NonMutexPeripherals {
         display,
