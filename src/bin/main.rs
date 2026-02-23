@@ -16,7 +16,7 @@ use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
 use meowbox::{
-    hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
+    hardware::{self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED},
     states::{MenuState, Meowbox, Stage, State},
     tasks::{
         mono_display::{
@@ -220,6 +220,7 @@ async fn main(spawner: Spawner) -> ! {
     // );
 
     let mut meowbox = Meowbox::new(state);
+    // turn red led back on to compensate for menu turning it off
 
     loop {
         meowbox.tick().await;

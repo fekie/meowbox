@@ -53,6 +53,8 @@ pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
     led: &'static hardware::ButtonLEDType,
 ) {
+    let neopixel_handle = NeoPixelHandle::new();
+
     let mut hue = 0;
     let brightness = 20;
 
@@ -67,6 +69,8 @@ pub async fn rotary_switch_right_event(
             .wait_for_falling_edge()
             .await;
         led.lock().await.as_mut().unwrap().set_low();
+
+        neopixel_handle.cycle_all_hues(3).await;
 
         // play simple tone
         //BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);

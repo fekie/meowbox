@@ -82,7 +82,7 @@ impl Meowbox {
             .await;
 
         // turn all leds off and go to next state
-        all_leds_off().await;
+        //all_leds_off().await;
         self.state =
             State::Menu(Stage::Execution, MenuState::default());
     }
@@ -90,7 +90,7 @@ impl Meowbox {
     async fn execute_menu_state(&mut self) {
         if let State::Menu(_, _) = &mut self.state {
             // Display stuff here
-            info!("display menu");
+            //info!("display menu");
         }
 
         Timer::after(Duration::from_millis(500)).await;

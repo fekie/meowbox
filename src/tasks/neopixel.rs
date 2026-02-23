@@ -6,6 +6,7 @@ use embassy_executor::task;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
+use embassy_time::{Duration, Timer};
 use esp_hal_smartled::SmartLedsAdapter;
 use smart_leds::{RGB8, SmartLedsWrite};
 
@@ -23,6 +24,9 @@ pub enum NeopixelCommand {
         hue: u16,
         brightness: u8,
     },
+    /// Cycle through all the hues, with 1ms inbetween.
+    /// The value is the amount of full cycles to do.
+    CycleAllHues(u8),
 }
 
 // Updated when a new command is sent.
@@ -72,6 +76,12 @@ impl NeoPixelHandle {
             })
             .await;
     }
+
+    pub async fn cycle_all_hues(&self, cycles: u8) {
+        NEOPIXEL_CH
+            .send(NeopixelCommand::CycleAllHues(cycles))
+            .await;
+    }
 }
 
 #[task]
@@ -102,6 +112,25 @@ pub async fn neopixel_command_listener(
                         CURRENT_BRIGHTNESS.load(SeqCst),
                     );
                     neopixel.write([rgb]).unwrap();
+                }
+            }
+            NeopixelCommand::CycleAllHues(cycles) => {
+                let mut hue = CURRENT_HUE.load(SeqCst);
+
+                for _ in 0..cycles {
+                    for _ in 0..360 {
+                        hue = (hue + 1) % 360;
+
+                        CURRENT_HUE.store(hue, SeqCst);
+
+                        let rgb = hue_to_rgb(
+                            hue,
+                            CURRENT_BRIGHTNESS.load(SeqCst),
+                        );
+                        neopixel.write([rgb]).unwrap();
+
+                        Timer::after(Duration::from_millis(2)).await;
+                    }
                 }
             }
         }
