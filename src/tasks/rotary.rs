@@ -14,7 +14,7 @@ use super::{
 };
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
-    tasks::neopixel::{NEOPIXEL_CH, NeopixelCommand},
+    tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
 };
 
 #[task]
@@ -53,7 +53,7 @@ pub async fn rotary_switch_right_event(
     led: &'static hardware::ButtonLEDType,
 ) {
     let mut hue = 0;
-    let brightness = 100;
+    let brightness = 20;
 
     // TODO: basically make the buzzer beeping a separate task, that
     // waits for a message on a channel
@@ -70,16 +70,16 @@ pub async fn rotary_switch_right_event(
         // play simple tone
         //BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);
 
-        println!("{}", hue);
+        //println!("{}", hue);
 
-        NEOPIXEL_CH
-            .send(NeopixelCommand::ActivateWithHSV {
-                hue,
-                brightness,
-            })
-            .await;
+        // NEOPIXEL_CH
+        //     .send(NeopixelCommand::ActivateWithHSV {
+        //         hue,
+        //         brightness,
+        //     })
+        //     .await;
 
-        hue = hue.wrapping_add(10);
+        // hue = hue.wrapping_add(10);
 
         Timer::after(Duration::from_millis(200)).await;
 
@@ -126,6 +126,8 @@ pub async fn right_rotary_rotation_watcher(
     right_rotary_a: Input<'static>,
     right_rotary_b: Input<'static>,
 ) {
+    let neopixel_handle = NeoPixelHandle::new();
+
     // start an encoder that we set the values of manually
     // this used to be 4, but it would sometimes miss count.
     // even still, any value of this usually overcounts
@@ -141,7 +143,9 @@ pub async fn right_rotary_rotation_watcher(
             Direction::Clockwise => {
                 BLUE_LED.lock().await.as_mut().unwrap().set_high();
                 GREEN_LED.lock().await.as_mut().unwrap().set_low();
+
                 info!("clockwise");
+                neopixel_handle.increment_neopixel_hue(5).await;
                 //Timer::after(Duration::from_millis(200)).await;
 
                 // Increment some value
@@ -150,7 +154,10 @@ pub async fn right_rotary_rotation_watcher(
                 GREEN_LED.lock().await.as_mut().unwrap().set_high();
                 BLUE_LED.lock().await.as_mut().unwrap().set_low();
                 //Timer::after(Duration::from_millis(200)).await;
+
                 info!("counterclockwise");
+                neopixel_handle.increment_neopixel_hue(-5).await;
+
                 // Decrement some value
             }
             Direction::None => {

@@ -271,7 +271,7 @@ pub async fn init_peripherals(
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
     // turn red
-    neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
+    //neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
 
     // let led_pin = Output::new(
     //     peripherals.GPIO48,

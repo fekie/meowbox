@@ -18,8 +18,11 @@ use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
     states::{MenuState, Meowbox, Stage, State},
-    tasks::mono_display::{
-        MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
+    tasks::{
+        mono_display::{
+            MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
+        },
+        neopixel::NeoPixelHandle,
     },
 };
 
@@ -128,6 +131,9 @@ async fn main(spawner: Spawner) -> ! {
 
     // TODO: spawn this task
     let _ = spawner.spawn(display_task(mono_display));
+
+    let neopixel_handle = NeoPixelHandle::new();
+    neopixel_handle.activate_with_hb(235, 50).await;
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
