@@ -133,7 +133,7 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(display_task(mono_display));
 
     let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 50).await;
+    neopixel_handle.activate_with_hb(235, 30).await;
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
