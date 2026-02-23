@@ -5,13 +5,12 @@ use embassy_executor::task;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal,
 };
-use light_ring::LightRingState;
 
-use crate::physics::PhysicsResources;
+use crate::{leds::LightRingState, physics::PhysicsResources};
 
 pub mod error_state;
 pub mod flow_field;
-pub mod light_ring;
+pub mod light_ring_loop;
 pub mod menu_state;
 
 /// Static cells are used in this program to hold values we want
@@ -65,7 +64,9 @@ impl Meowbox {
         //info!("{}", self.resources.foo);
 
         match self.state {
-            State::LightRing(_, _) => self.tick_light_ring().await,
+            State::LightRing(_, _) => {
+                self.tick_light_ring_loop().await
+            }
             State::FlowField(_, _) => self.tick_flow_field().await,
             State::ErrorState(_) => self.tick_error_state().await,
             State::Menu(_, _) => self.tick_menu_state().await,

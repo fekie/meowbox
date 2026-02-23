@@ -6,9 +6,9 @@ use embassy_time::{Duration, Timer};
 use noise_perlin::perlin_2d;
 use static_cell::StaticCell;
 
-use super::light_ring::LightRingState;
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
+    leds::LightRingState,
     physics::{self, SCREEN_WIDTH},
     states::{ErrorStateType, Meowbox, Stage, State},
     tasks::all_leds_off,

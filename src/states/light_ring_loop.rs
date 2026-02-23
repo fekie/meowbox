@@ -3,33 +3,34 @@ use embassy_time::{Duration, Timer};
 use super::{Meowbox, State};
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
+    leds::{LightRing, LightRingState},
     states::{ErrorStateType, Stage},
     tasks::all_leds_off,
 };
 
-#[derive(Default, Clone, Copy, Debug)]
-pub enum LightRingState {
-    #[default]
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    White,
+pub enum MovementState {
+    Forward,
+    Backward,
+    None,
 }
 
 // Light Ring
 impl Meowbox {
-    pub(super) async fn tick_light_ring(&mut self) {
+    pub(super) async fn tick_light_ring_loop(&mut self) {
         if let State::LightRing(stage, _) = self.state {
             match stage {
-                Stage::Setup => self.setup_light_ring().await,
-                Stage::Execution => self.execute_light_ring().await,
-                Stage::Shutdown => self.shutdown_light_ring().await,
+                Stage::Setup => self.setup_light_ring_loop().await,
+                Stage::Execution => {
+                    self.execute_light_ring_loop().await
+                }
+                Stage::Shutdown => {
+                    self.shutdown_light_ring_loop().await
+                }
             }
         }
     }
 
-    async fn setup_light_ring(&mut self) {
+    async fn setup_light_ring_loop(&mut self) {
         // turn all leds off and go to next state
         all_leds_off().await;
         self.state = State::LightRing(
@@ -38,7 +39,7 @@ impl Meowbox {
         );
     }
 
-    async fn execute_light_ring(&mut self) {
+    async fn execute_light_ring_loop(&mut self) {
         if let State::LightRing(_, light_ring_state) = &mut self.state
         {
             match light_ring_state {
@@ -120,7 +121,7 @@ impl Meowbox {
 
     /// This method is called if the state is in shutdown. Shutdown
     /// is only started when an item exists in next_state.
-    async fn shutdown_light_ring(&mut self) {
+    async fn shutdown_light_ring_loop(&mut self) {
         // TODO: turn all lights off
         all_leds_off().await;
 

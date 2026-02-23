@@ -14,6 +14,7 @@ use super::{
 };
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
+    leds::LightRing,
     tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
 };
 
@@ -95,6 +96,8 @@ pub async fn left_rotary_rotation_watcher(
     left_rotary_a: Input<'static>,
     left_rotary_b: Input<'static>,
 ) {
+    let mut light_ring = LightRing::new().await;
+
     // start an encoder that we set the values of manually
 
     let mut raw_encoder = QuadratureTableMode::new(3);
@@ -107,12 +110,16 @@ pub async fn left_rotary_rotation_watcher(
 
         match dir {
             Direction::Clockwise => {
-                YELLOW_LED.lock().await.as_mut().unwrap().set_high();
-                RED_LED.lock().await.as_mut().unwrap().set_low();
+                // YELLOW_LED.lock().await.as_mut().unwrap().
+                // set_high(); RED_LED.lock().await.
+                // as_mut().unwrap().set_low();
+                light_ring.forward().await;
             }
             Direction::Anticlockwise => {
-                RED_LED.lock().await.as_mut().unwrap().set_high();
-                YELLOW_LED.lock().await.as_mut().unwrap().set_low();
+                // RED_LED.lock().await.as_mut().unwrap().set_high();
+                // YELLOW_LED.lock().await.as_mut().unwrap().
+                // set_low();
+                light_ring.backward().await;
             }
             Direction::None => {}
         }
@@ -141,8 +148,8 @@ pub async fn right_rotary_rotation_watcher(
 
         match dir {
             Direction::Clockwise => {
-                BLUE_LED.lock().await.as_mut().unwrap().set_high();
-                GREEN_LED.lock().await.as_mut().unwrap().set_low();
+                // BLUE_LED.lock().await.as_mut().unwrap().set_high();
+                // GREEN_LED.lock().await.as_mut().unwrap().set_low();
 
                 info!("clockwise");
                 neopixel_handle.increment_neopixel_hue(5).await;
@@ -151,9 +158,10 @@ pub async fn right_rotary_rotation_watcher(
                 // Increment some value
             }
             Direction::Anticlockwise => {
-                GREEN_LED.lock().await.as_mut().unwrap().set_high();
-                BLUE_LED.lock().await.as_mut().unwrap().set_low();
-                //Timer::after(Duration::from_millis(200)).await;
+                // GREEN_LED.lock().await.as_mut().unwrap().
+                // set_high(); BLUE_LED.lock().await.
+                // as_mut().unwrap().set_low();
+                // Timer::after(Duration::from_millis(200)).await;
 
                 info!("counterclockwise");
                 neopixel_handle.increment_neopixel_hue(-5).await;
