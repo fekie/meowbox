@@ -1,3 +1,4 @@
+use defmt::println;
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_executor::task;
@@ -11,7 +12,10 @@ use super::{
     BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL,
     LEDRotationParams, hardware,
 };
-use crate::hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED};
+use crate::{
+    hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
+    tasks::neopixel::{NEOPIXEL_CH, NeopixelCommand},
+};
 
 #[task]
 pub async fn rotary_switch_left_event(
@@ -48,6 +52,9 @@ pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
     led: &'static hardware::ButtonLEDType,
 ) {
+    let mut hue = 0;
+    let brightness = 100;
+
     // TODO: basically make the buzzer beeping a separate task, that
     // waits for a message on a channel
     loop {
@@ -61,7 +68,18 @@ pub async fn rotary_switch_right_event(
         led.lock().await.as_mut().unwrap().set_low();
 
         // play simple tone
-        BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);
+        //BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);
+
+        println!("{}", hue);
+
+        NEOPIXEL_CH
+            .send(NeopixelCommand::ActivateWithHSV {
+                hue,
+                brightness,
+            })
+            .await;
+
+        hue = hue.wrapping_add(10);
 
         Timer::after(Duration::from_millis(200)).await;
 

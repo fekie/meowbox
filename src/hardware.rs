@@ -1,19 +1,14 @@
-use defmt::info;
+#[allow(unused_imports)]
+use defmt::{error, info, warn};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex,
 };
 use embassy_time::{Duration, Timer};
 use esp_hal::{
-    Config,
-    clock::CpuClock,
-    gpio::{
-        DriveMode, Input, InputConfig, Level, Output, OutputConfig,
-        Pull,
-    },
+    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
     i2c::master::{Config as I2cConfig, I2c},
     ledc::{
         Ledc, LowSpeed,
-        channel::{self, ChannelIFace},
         timer::{self, TimerIFace},
     },
     peripherals::FLASH,
@@ -22,6 +17,7 @@ use esp_hal::{
     timer::timg::TimerGroup,
 };
 use esp_hal_smartled::{SmartLedsAdapter, buffer_size};
+#[allow(unused_imports)]
 use esp_println::println;
 use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
@@ -92,8 +88,8 @@ pub struct NonMutexPeripherals {
     pub right_rotary_a: Input<'static>,
     pub right_rotary_b: Input<'static>,
     pub flash: FLASH<'static>,
-    //pub simple_speaker:
-    // Output<'static>,
+    // it has a buffer size of one because there is only one neopixel
+    pub neopixel: SmartLedsAdapter<'static, 25>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -183,7 +179,7 @@ pub async fn init_peripherals(
     //     output_config_default,
     // );
 
-    Timer::after(Duration::from_millis(500)).await;
+    //Timer::after(Duration::from_millis(500)).await;
 
     let left_rotary_a = Input::new(peripherals.GPIO2, pull_up_config);
     let left_rotary_b =
@@ -275,7 +271,7 @@ pub async fn init_peripherals(
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
     // turn red
-    neopixel.write([RGB8 { r: 20, g: 0, b: 0 }]).unwrap();
+    neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
 
     // let led_pin = Output::new(
     //     peripherals.GPIO48,
@@ -300,5 +296,6 @@ pub async fn init_peripherals(
         right_rotary_a,
         right_rotary_b,
         flash, //simple_speaker,
+        neopixel,
     }
 }

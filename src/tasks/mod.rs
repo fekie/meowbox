@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_sync::{
@@ -5,23 +6,19 @@ use embassy_sync::{
     signal::Signal,
 };
 use embassy_time::{Duration, Timer};
-use esp_hal::gpio::Input;
 use heapless::Vec;
 pub use mono_display::display_task;
+pub use neopixel::neopixel_command_listener;
 pub use rotary::{
     left_rotary_rotation_watcher, right_rotary_rotation_watcher,
     rotary_switch_left_event, rotary_switch_right_event,
 };
-use rotary_encoder_embedded::{
-    Direction, quadrature::QuadratureTableMode,
-};
 
 use super::hardware;
-use crate::hardware::{
-    BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
-};
+use crate::hardware::LED_ARRAY;
 
 pub mod mono_display;
+pub mod neopixel;
 pub mod rotary;
 
 pub static BUZZER_SIGNAL: Signal<

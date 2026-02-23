@@ -2,12 +2,7 @@
 use defmt::{error, info, warn};
 use embassy_time::{Duration, Timer};
 
-use super::{
-    super::hardware::{
-        self, BLUE_LED, GREEN_LED, LED_ARRAY, RED_LED, YELLOW_LED,
-    },
-    Meowbox,
-};
+use super::{super::hardware::RED_LED, Meowbox};
 use crate::states::State;
 
 impl Meowbox {

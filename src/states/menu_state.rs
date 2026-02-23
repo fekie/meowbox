@@ -2,7 +2,7 @@ use defmt::info;
 use embassy_time::{Duration, Timer};
 use heapless::String;
 
-use super::{Meowbox, State, light_ring::LightRingState};
+use super::{Meowbox, State};
 use crate::{
     states::{ErrorStateType, MenuState, Stage},
     tasks::{
@@ -88,7 +88,7 @@ impl Meowbox {
     }
 
     async fn execute_menu_state(&mut self) {
-        if let State::Menu(_, menu_state) = &mut self.state {
+        if let State::Menu(_, _) = &mut self.state {
             // Display stuff here
             info!("display menu");
         }

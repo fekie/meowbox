@@ -6,33 +6,22 @@
     holding buffers for the duration of a data transfer."
 )]
 
-use core::f32::consts::PI;
-
-use defmt::{error, info};
+#[allow(unused_imports)]
+use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
-use embedded_graphics::{
-    mono_font::{MonoTextStyleBuilder, ascii::FONT_6X10},
-    pixelcolor::BinaryColor,
-    prelude::{Point, *},
-    text::{Baseline, Text},
-};
 use embedded_storage::{ReadStorage, Storage};
-use esp_hal::{clock::CpuClock, rng::Rng, timer::timg::TimerGroup};
+use esp_hal::{clock::CpuClock, rng::Rng};
 use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RIGHT_BUTTON_LED},
-    states::{
-        MenuState, Meowbox, Stage, State, light_ring::LightRingState,
-    },
+    states::{MenuState, Meowbox, Stage, State},
     tasks::mono_display::{
         MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
     },
 };
-use noise_perlin::perlin_2d;
-use ssd1306::prelude::*;
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -40,14 +29,12 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-use meowbox::{
-    physics::{self, SCREEN_WIDTH},
-    tasks::{
-        display_task, led_rotation, left_button_event,
-        left_rotary_rotation_watcher, play_sequence_listener,
-        right_button_event, right_rotary_rotation_watcher,
-        rotary_switch_left_event, rotary_switch_right_event,
-    },
+use meowbox::tasks::{
+    display_task, led_rotation, left_button_event,
+    left_rotary_rotation_watcher, neopixel_command_listener,
+    play_sequence_listener, right_button_event,
+    right_rotary_rotation_watcher, rotary_switch_left_event,
+    rotary_switch_right_event,
 };
 
 // This creates a default app-descriptor required by the esp-idf
@@ -60,11 +47,11 @@ async fn main(spawner: Spawner) -> ! {
         esp_hal::Config::default().with_cpu_clock(CpuClock::_80MHz);
     let peripherals = esp_hal::init(config);
 
-    let mut non_mutex_peripherals =
+    let non_mutex_peripherals =
         hardware::init_peripherals(peripherals).await;
 
     let flash_addr = 0x9000;
-    let mut bytes = [0u8; 32];
+
     let mut flash = FlashStorage::new(non_mutex_peripherals.flash);
 
     println!("Flash size = {}", flash.capacity());
@@ -93,7 +80,7 @@ async fn main(spawner: Spawner) -> ! {
 
     //let mut display = non_mutex_peripherals.display;
 
-    let rng = Rng::new();
+    //let rng = Rng::new();
 
     let mono_display =
         MonoDisplay::Graphics(non_mutex_peripherals.display);
@@ -133,6 +120,10 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(left_rotary_rotation_watcher(
         non_mutex_peripherals.left_rotary_a,
         non_mutex_peripherals.left_rotary_b,
+    ));
+
+    let _ = spawner.spawn(neopixel_command_listener(
+        non_mutex_peripherals.neopixel,
     ));
 
     // TODO: spawn this task

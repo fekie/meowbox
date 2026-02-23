@@ -3,21 +3,16 @@ use defmt::Format;
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
-    signal::Signal,
+    blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal,
 };
-use embassy_time::{Duration, Timer};
 use light_ring::LightRingState;
-use static_cell::StaticCell;
 
-use crate::physics::{self, PhysicsResources};
+use crate::physics::PhysicsResources;
 
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring;
 pub mod menu_state;
-
-static FOO: StaticCell<u32> = StaticCell::new();
 
 /// Static cells are used in this program to hold values we want
 /// to be on the stack, while also being able to juggle around a
@@ -183,6 +178,6 @@ pub static STATE_CHANGE_REQUEST: Signal<
 #[task]
 pub async fn left_button_event() {
     loop {
-        let next_state = STATE_CHANGE_REQUEST.wait().await;
+        let _next_state = STATE_CHANGE_REQUEST.wait().await;
     }
 }

@@ -4,16 +4,11 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
 use embassy_time::{Duration, Timer};
-use embedded_graphics::{
-    mono_font::{MonoTextStyleBuilder, ascii::FONT_6X10},
-    pixelcolor::BinaryColor,
-    prelude::{Point, *},
-    text::{Baseline, Text},
-};
-use esp_hal::i2c::master::{Config as I2cConfig, I2c};
+use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
+use esp_hal::i2c::master::I2c;
 use heapless::String;
 use ssd1306::{
-    I2CDisplayInterface, Ssd1306Async,
+    Ssd1306Async,
     mode::{BufferedGraphicsModeAsync, TerminalModeAsync},
     prelude::*,
 };
