@@ -19,7 +19,6 @@ use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED},
     states::{MenuState, Meowbox, Stage, State},
     tasks::{
-        menu_scroll::menu_scroll_command_listener,
         mono_display::{
             MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
         },
@@ -142,8 +141,6 @@ async fn main(spawner: Spawner) -> ! {
 
     // TODO: spawn this task
     let _ = spawner.spawn(display_task(mono_display));
-
-    let _ = spawner.spawn(menu_scroll_command_listener());
 
     let neopixel_handle = NeoPixelHandle::new();
     neopixel_handle.activate_with_hb(235, 30).await;

@@ -90,6 +90,14 @@ impl MenuFolder {
 pub enum MenuProgram {
     LightShow,
     Beeper,
+    FlowField,
+    Seizure,
+    Cry,
+    Polyhedra,
+    BadDecision,
+    Wireframe,
+    Sounds,
+    Conway,
 
     // Exists under folder Test
     BuzzerTest,
@@ -100,6 +108,14 @@ impl MenuProgram {
         match self {
             MenuProgram::LightShow => "LightShow",
             MenuProgram::Beeper => "Beeper",
+            MenuProgram::FlowField => "FlowField",
+            MenuProgram::Seizure => "Seizure",
+            MenuProgram::Cry => "Cry",
+            MenuProgram::Polyhedra => "Polyhedra",
+            MenuProgram::BadDecision => "BadDecision",
+            MenuProgram::Wireframe => "Wireframe",
+            MenuProgram::Sounds => "Sounds",
+            MenuProgram::Conway => "Conway",
             MenuProgram::BuzzerTest => "BuzzerTest",
         }
     }
@@ -115,8 +131,8 @@ pub enum MenuGeneralItem {
 pub struct MenuTree {
     /// How much the menu has been "scrolled down"
     pub offset: usize,
-    pub layer_0: Vec<MenuGeneralItem, 10>,
-    pub layer_1: Vec<MenuGeneralItem, 10>,
+    pub layer_0: Vec<MenuGeneralItem, 20>,
+    pub layer_1: Vec<MenuGeneralItem, 20>,
 }
 
 /// This is where the definition of the menu tree for this program
@@ -125,11 +141,36 @@ fn generate_menu_definition() -> MenuTree {
     //MenuTree { inner: arena }
 
     let mut layer_0 = Vec::new();
+
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::LightShow))
         .unwrap();
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Beeper))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::FlowField))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Seizure))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Cry))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Polyhedra))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::BadDecision))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Wireframe))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Sounds))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Conway))
         .unwrap();
 
     layer_0
@@ -157,7 +198,7 @@ fn generate_menu_definition() -> MenuTree {
 
 impl MenuTree {
     pub fn new() -> Self {
-        dbg!(generate_menu_definition())
+        generate_menu_definition()
     }
 }
 

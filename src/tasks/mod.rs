@@ -17,7 +17,6 @@ pub use rotary::{
 use super::hardware;
 use crate::hardware::LED_ARRAY;
 
-pub mod menu_scroll;
 pub mod mono_display;
 pub mod neopixel;
 pub mod rotary;

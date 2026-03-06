@@ -17,10 +17,7 @@ use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
     leds::LightRing,
     menu::MenuStatusHandle,
-    tasks::{
-        menu_scroll::{MENU_SCROLL_CH, MenuScrollCommand},
-        neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
-    },
+    tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
 };
 
 #[task]
@@ -198,8 +195,6 @@ fn menu_scroll_down() {
     scroll = (scroll + 1) % menu_status_handle.current_layer_size();
     menu_status_handle.set_scroll(scroll);
     menu_status_handle.set_needs_update(true);
-
-    dbg!(scroll);
 }
 
 // Scrolls up the menu by 1 (which decrements the scroll offset)
@@ -214,6 +209,4 @@ fn menu_scroll_up() {
     }
     menu_status_handle.set_scroll(scroll);
     menu_status_handle.set_needs_update(true);
-
-    dbg!(scroll);
 }

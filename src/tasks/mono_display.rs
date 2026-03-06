@@ -14,6 +14,8 @@ use ssd1306::{
     prelude::*,
 };
 
+pub const MONO_DISPLAY_LINE_WIDTH: usize = 16;
+
 /// A channel to send commands to the display.
 pub static MONO_DISPLAY_CH: Channel<
     CriticalSectionRawMutex,
@@ -33,7 +35,7 @@ pub enum MonoDisplayCommand {
     /// Usable by Terminal
     SwitchToGraphics,
     /// Write string. Usable by Terminal
-    WriteStr(String<10>),
+    WriteStr(String<MONO_DISPLAY_LINE_WIDTH>),
 }
 
 #[embassy_executor::task]
@@ -156,7 +158,10 @@ impl MonoDisplay {
         }
     }
 
-    async fn cmd_write_str(&mut self, s: String<10>) {
+    async fn cmd_write_str(
+        &mut self,
+        s: String<MONO_DISPLAY_LINE_WIDTH>,
+    ) {
         if let MonoDisplay::Terminal(x) = self {
             match x.write_str(&s).await {
                 Ok(()) => trace!("string written to display!"),

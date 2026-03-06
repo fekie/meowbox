@@ -8,69 +8,12 @@ use crate::{
     states::{ErrorStateType, MenuState, Stage},
     tasks::{
         all_leds_off,
-        menu_scroll::CURRENT_MENU_SCROLL,
-        mono_display::{MONO_DISPLAY_CH, MonoDisplayCommand},
+        mono_display::{
+            MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
+            MonoDisplayCommand,
+        },
     },
 };
-
-async fn test_text_on_each_line() {
-    // change display to terminal (and waits for it to happen)
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::SwitchToTerminal)
-        .await;
-
-    // then init
-    MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
-
-    MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
-
-    // send a string to screen
-    let s: String<10> = String::try_from("meowbox").unwrap();
-    MONO_DISPLAY_CH.send(MonoDisplayCommand::WriteStr(s)).await;
-
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \non!").unwrap(),
-        ))
-        .await;
-
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \naon!").unwrap(),
-        ))
-        .await;
-
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \nbon!").unwrap(),
-        ))
-        .await;
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \ncon!").unwrap(),
-        ))
-        .await;
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \ndon!").unwrap(),
-        ))
-        .await;
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \neon!").unwrap(),
-        ))
-        .await;
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \nfon!").unwrap(),
-        ))
-        .await;
-    MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(
-            String::try_from(" \ngon!").unwrap(),
-        ))
-        .await;
-}
 
 // Light Ring
 impl Meowbox {
@@ -146,6 +89,9 @@ impl Meowbox {
             .layer_0
             .iter()
             .skip(scroll)
+            // we only show the first 7, because this is all that fits
+            // on the screen
+            .take(7)
         {
             // let name = match general_item {
             //     MenuGeneralItem::MenuProgram(x) => {
@@ -154,14 +100,22 @@ impl Meowbox {
             //     MenuGeneralItem::MenuFolder(x) => x.to_string(),
             // };
 
-            let name: String<10> = match general_item {
-                MenuGeneralItem::MenuProgram(x) => {
-                    String::try_from(x.as_str()).unwrap()
-                }
-                MenuGeneralItem::MenuFolder(x) => {
-                    String::try_from(x.as_str()).unwrap()
-                }
-            };
+            let name: String<MONO_DISPLAY_LINE_WIDTH> =
+                match general_item {
+                    MenuGeneralItem::MenuProgram(x) => {
+                        let mut combined: String<16> = String::new();
+                        combined.push_str("#").unwrap();
+                        combined.push_str(&x.as_str()).unwrap();
+                        combined
+                    }
+                    MenuGeneralItem::MenuFolder(x) => {
+                        let mut combined: String<16> = String::new();
+                        combined.push_str("/").unwrap();
+                        combined.push_str(&x.as_str()).unwrap();
+                        combined
+                        //String::try_from(x.as_str()).unwrap()
+                    }
+                };
 
             MONO_DISPLAY_CH
                 .send(MonoDisplayCommand::WriteStr(name))
@@ -172,9 +126,15 @@ impl Meowbox {
                     String::try_from(" \n").unwrap(),
                 ))
                 .await;
+
+            // MONO_DISPLAY_CH
+            //     .send(MonoDisplayCommand::WriteStr(
+            //         String::try_from("aaaa▓█▄▀│").unwrap(),
+            //     ))
+            //     .await;
         }
 
-        Timer::after(Duration::from_millis(500)).await;
+        Timer::after(Duration::from_micros(100)).await;
     }
 
     /// This method is called if the state is in shutdown. Shutdown
@@ -190,4 +150,65 @@ impl Meowbox {
             ),
         }
     }
+}
+
+#[allow(dead_code)]
+async fn test_text_on_each_line() {
+    // change display to terminal (and waits for it to happen)
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::SwitchToTerminal)
+        .await;
+
+    // then init
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
+
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
+    // send a string to screen
+    let s: String<MONO_DISPLAY_LINE_WIDTH> =
+        String::try_from("meowbox").unwrap();
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::WriteStr(s)).await;
+
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \non!").unwrap(),
+        ))
+        .await;
+
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \naon!").unwrap(),
+        ))
+        .await;
+
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \nbon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \ncon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \ndon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \neon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \nfon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \ngon!").unwrap(),
+        ))
+        .await;
 }
