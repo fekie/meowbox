@@ -130,6 +130,12 @@ impl Meowbox {
 
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
 
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::WriteStr(
+                String::try_from(" \n").unwrap(),
+            ))
+            .await;
+
         // let menu_offset = CURRENT_MENU_SCROLL
         //     .load(core::sync::atomic::Ordering::SeqCst);
 

@@ -12,6 +12,9 @@ static _MENU_TREE: StaticCell<MenuTree> = StaticCell::new();
 
 pub static _MENU_SCROLL: AtomicUsize = AtomicUsize::new(0);
 pub static _MENU_NEEDS_UPDATE: AtomicBool = AtomicBool::new(true);
+pub static _MENU_LAYER_0_SIZE: AtomicUsize = AtomicUsize::new(0);
+pub static _MENU_LAYER_1_SIZE: AtomicUsize = AtomicUsize::new(0);
+pub static _LAYER: AtomicUsize = AtomicUsize::new(0);
 
 /// A zero cost struct for accessing the scroll index across tasks.
 pub struct MenuStatusHandle {}
@@ -35,6 +38,38 @@ impl MenuStatusHandle {
 
     pub fn set_needs_update(&self, value: bool) {
         _MENU_NEEDS_UPDATE.store(value, SeqCst);
+    }
+
+    pub fn layer_0_size(&self) -> usize {
+        _MENU_LAYER_0_SIZE.load(SeqCst)
+    }
+
+    pub fn set_layer_0_size(&self, value: usize) {
+        _MENU_LAYER_0_SIZE.store(value, SeqCst);
+    }
+
+    pub fn layer_1_size(&self) -> usize {
+        _MENU_LAYER_1_SIZE.load(SeqCst)
+    }
+
+    pub fn set_layer_1_size(&self, value: usize) {
+        _MENU_LAYER_1_SIZE.store(value, SeqCst);
+    }
+
+    pub fn layer(&self) -> usize {
+        _LAYER.load(SeqCst)
+    }
+
+    pub fn set_layer(&self, value: usize) {
+        _LAYER.store(value, SeqCst);
+    }
+
+    pub fn current_layer_size(&self) -> usize {
+        match _LAYER.load(SeqCst) {
+            0 => _MENU_LAYER_0_SIZE.load(SeqCst),
+            1 => _MENU_LAYER_1_SIZE.load(SeqCst),
+            _ => panic!(),
+        }
     }
 }
 
@@ -106,6 +141,12 @@ fn generate_menu_definition() -> MenuTree {
     layer_1
         .push(MenuGeneralItem::MenuProgram(MenuProgram::BuzzerTest))
         .unwrap();
+
+    // update the layer length
+    let handle = MenuStatusHandle::new();
+
+    handle.set_layer_0_size(layer_0.len());
+    handle.set_layer_1_size(layer_1.len());
 
     MenuTree {
         layer_0,

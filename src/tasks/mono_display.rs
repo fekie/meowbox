@@ -1,3 +1,4 @@
+use defmt::trace;
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_sync::{
@@ -158,7 +159,7 @@ impl MonoDisplay {
     async fn cmd_write_str(&mut self, s: String<10>) {
         if let MonoDisplay::Terminal(x) = self {
             match x.write_str(&s).await {
-                Ok(()) => info!("string written to display!"),
+                Ok(()) => trace!("string written to display!"),
                 Err(_) => info!("error writing string to display."),
             }
         }

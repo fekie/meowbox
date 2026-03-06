@@ -4,6 +4,7 @@ use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio::Input;
+use esp_println::dbg;
 use rotary_encoder_embedded::{
     Direction, quadrature::QuadratureTableMode,
 };
@@ -123,30 +124,14 @@ pub async fn left_rotary_rotation_watcher(
                 // set_high(); RED_LED.lock().await.
                 // as_mut().unwrap().set_low();
                 light_ring.forward().await;
-
-                let menu_status_handle = MenuStatusHandle::new();
-
-                let mut scroll = menu_status_handle.scroll();
-                scroll = (scroll + 1) % 2;
-                menu_status_handle.set_scroll(scroll);
-                menu_status_handle.set_needs_update(true);
+                menu_scroll_down();
             }
             Direction::Anticlockwise => {
                 // RED_LED.lock().await.as_mut().unwrap().set_high();
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_low();
                 light_ring.backward().await;
-
-                let menu_status_handle = MenuStatusHandle::new();
-
-                let mut scroll = menu_status_handle.scroll();
-                if scroll == 0 {
-                    scroll = 2;
-                } else {
-                    scroll -= 1;
-                }
-                menu_status_handle.set_scroll(scroll);
-                menu_status_handle.set_needs_update(true);
+                menu_scroll_up();
             }
             Direction::None => {}
         }
@@ -203,4 +188,32 @@ pub async fn right_rotary_rotation_watcher(
 
         Timer::after(Duration::from_micros(1000)).await; // 1 kHz
     }
+}
+
+// Scrolls down the menu by 1 (which increments the scroll offset)
+fn menu_scroll_down() {
+    let menu_status_handle = MenuStatusHandle::new();
+
+    let mut scroll = menu_status_handle.scroll();
+    scroll = (scroll + 1) % menu_status_handle.current_layer_size();
+    menu_status_handle.set_scroll(scroll);
+    menu_status_handle.set_needs_update(true);
+
+    dbg!(scroll);
+}
+
+// Scrolls up the menu by 1 (which decrements the scroll offset)
+fn menu_scroll_up() {
+    let menu_status_handle = MenuStatusHandle::new();
+
+    let mut scroll = menu_status_handle.scroll();
+    if scroll == 0 {
+        scroll = menu_status_handle.current_layer_size() - 1;
+    } else {
+        scroll -= 1;
+    }
+    menu_status_handle.set_scroll(scroll);
+    menu_status_handle.set_needs_update(true);
+
+    dbg!(scroll);
 }
