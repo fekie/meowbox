@@ -15,7 +15,10 @@ use super::{
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
     leds::LightRing,
-    tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
+    tasks::{
+        menu_scroll::{MENU_SCROLL_CH, MenuScrollCommand},
+        neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
+    },
 };
 
 #[task]
@@ -119,12 +122,20 @@ pub async fn left_rotary_rotation_watcher(
                 // set_high(); RED_LED.lock().await.
                 // as_mut().unwrap().set_low();
                 light_ring.forward().await;
+
+                MENU_SCROLL_CH
+                    .send(MenuScrollCommand::Forwards)
+                    .await;
             }
             Direction::Anticlockwise => {
                 // RED_LED.lock().await.as_mut().unwrap().set_high();
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_low();
                 light_ring.backward().await;
+
+                MENU_SCROLL_CH
+                    .send(MenuScrollCommand::Backwards)
+                    .await;
             }
             Direction::None => {}
         }

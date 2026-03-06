@@ -8,6 +8,7 @@ use crate::{
     states::{ErrorStateType, MenuState, Stage},
     tasks::{
         all_leds_off,
+        menu_scroll::CURRENT_MENU_SCROLL,
         mono_display::{MONO_DISPLAY_CH, MonoDisplayCommand},
     },
 };
@@ -99,8 +100,32 @@ impl Meowbox {
             ))
             .await;
 
-        for general_item in
-            &self.resources.menu_resoures.menu_tree.layer_0
+        // display the menu
+
+        //test_text_on_each_line().await;
+
+        // turn all leds off and go to next state
+        //all_leds_off().await;
+        self.state =
+            State::Menu(Stage::Execution, MenuState::default());
+    }
+
+    async fn execute_menu_state(&mut self) {
+        if let State::Menu(_, _) = &mut self.state {
+            // Display stuff here
+            //info!("display menu");
+        }
+
+        let menu_offset = CURRENT_MENU_SCROLL
+            .load(core::sync::atomic::Ordering::SeqCst);
+
+        for general_item in self
+            .resources
+            .menu_resoures
+            .menu_tree
+            .layer_0
+            .iter()
+            .skip(menu_offset)
         {
             // let name = match general_item {
             //     MenuGeneralItem::MenuProgram(x) => {
@@ -127,22 +152,6 @@ impl Meowbox {
                     String::try_from(" \n").unwrap(),
                 ))
                 .await;
-        }
-
-        // display the menu
-
-        //test_text_on_each_line().await;
-
-        // turn all leds off and go to next state
-        //all_leds_off().await;
-        self.state =
-            State::Menu(Stage::Execution, MenuState::default());
-    }
-
-    async fn execute_menu_state(&mut self) {
-        if let State::Menu(_, _) = &mut self.state {
-            // Display stuff here
-            //info!("display menu");
         }
 
         Timer::after(Duration::from_millis(500)).await;

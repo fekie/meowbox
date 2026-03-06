@@ -66,6 +66,8 @@ pub enum MenuGeneralItem {
 
 #[derive(Debug)]
 pub struct MenuTree {
+    /// How much the menu has been "scrolled down"
+    pub offset: usize,
     pub layer_0: Vec<MenuGeneralItem, 10>,
     pub layer_1: Vec<MenuGeneralItem, 10>,
 }
@@ -93,7 +95,11 @@ fn generate_menu_definition() -> MenuTree {
         .push(MenuGeneralItem::MenuProgram(MenuProgram::BuzzerTest))
         .unwrap();
 
-    MenuTree { layer_0, layer_1 }
+    MenuTree {
+        layer_0,
+        layer_1,
+        offset: 0,
+    }
 }
 
 impl MenuTree {
