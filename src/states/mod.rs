@@ -6,7 +6,10 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal,
 };
 
-use crate::{leds::LightRingState, physics::PhysicsResources};
+use crate::{
+    leds::LightRingState, menu::MenuResources,
+    physics::PhysicsResources,
+};
 
 pub mod error_state;
 pub mod flow_field;
@@ -21,6 +24,7 @@ pub mod menu_state;
 /// chain, but it complicates the interface and requires more copying.
 pub struct Resources {
     pub physics_resources: PhysicsResources,
+    pub menu_resoures: MenuResources,
     //pub particles: &'static mut [physics::Particle; 5],
 }
 
@@ -47,6 +51,7 @@ impl Meowbox {
     pub fn new(starting_state: State) -> Self {
         let resources = Resources {
             physics_resources: PhysicsResources::new(),
+            menu_resoures: MenuResources::new(),
         };
 
         Meowbox {

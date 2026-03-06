@@ -230,7 +230,7 @@ async fn main(spawner: Spawner) -> ! {
     //     meowbox::states::FlowFieldState::Fast,
     // );
 
-    let menu_tree = menutree::MenuTree::new();
+    //let menu_tree = menutree::MenuTree::new();
 
     let mut meowbox = Meowbox::new(state);
     // turn red led back on to compensate for menu turning it off

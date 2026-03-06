@@ -4,12 +4,72 @@ use heapless::String;
 
 use super::{Meowbox, State};
 use crate::{
+    menutree::{MenuGeneralItem, MenuProgram},
     states::{ErrorStateType, MenuState, Stage},
     tasks::{
         all_leds_off,
         mono_display::{MONO_DISPLAY_CH, MonoDisplayCommand},
     },
 };
+
+async fn test_text_on_each_line() {
+    // change display to terminal (and waits for it to happen)
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::SwitchToTerminal)
+        .await;
+
+    // then init
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
+
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
+    // send a string to screen
+    let s: String<10> = String::try_from("meowbox").unwrap();
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::WriteStr(s)).await;
+
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \non!").unwrap(),
+        ))
+        .await;
+
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \naon!").unwrap(),
+        ))
+        .await;
+
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \nbon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \ncon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \ndon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \neon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \nfon!").unwrap(),
+        ))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(
+            String::try_from(" \ngon!").unwrap(),
+        ))
+        .await;
+}
 
 // Light Ring
 impl Meowbox {
@@ -24,62 +84,54 @@ impl Meowbox {
     }
 
     async fn setup_menu_state(&mut self) {
-        // change display to terminal (and waits for it to happen)
         MONO_DISPLAY_CH
             .send(MonoDisplayCommand::SwitchToTerminal)
             .await;
 
-        // then init
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
 
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
 
-        // send a string to screen
-        let s: String<10> = String::try_from("meowbox").unwrap();
-        MONO_DISPLAY_CH.send(MonoDisplayCommand::WriteStr(s)).await;
-
+        // do blank line
         MONO_DISPLAY_CH
             .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \non!").unwrap(),
+                String::try_from(" \n").unwrap(),
             ))
             .await;
 
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \naon!").unwrap(),
-            ))
-            .await;
+        for general_item in
+            &self.resources.menu_resoures.menu_tree.layer_0
+        {
+            // let name = match general_item {
+            //     MenuGeneralItem::MenuProgram(x) => {
+            //         String::from(x.as_str())
+            //     }
+            //     MenuGeneralItem::MenuFolder(x) => x.to_string(),
+            // };
 
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \nbon!").unwrap(),
-            ))
-            .await;
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \ncon!").unwrap(),
-            ))
-            .await;
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \ndon!").unwrap(),
-            ))
-            .await;
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \neon!").unwrap(),
-            ))
-            .await;
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \nfon!").unwrap(),
-            ))
-            .await;
-        MONO_DISPLAY_CH
-            .send(MonoDisplayCommand::WriteStr(
-                String::try_from(" \ngon!").unwrap(),
-            ))
-            .await;
+            let name: String<10> = match general_item {
+                MenuGeneralItem::MenuProgram(x) => {
+                    String::try_from(x.as_str()).unwrap()
+                }
+                MenuGeneralItem::MenuFolder(x) => {
+                    String::try_from(x.as_str()).unwrap()
+                }
+            };
+
+            MONO_DISPLAY_CH
+                .send(MonoDisplayCommand::WriteStr(name))
+                .await;
+
+            MONO_DISPLAY_CH
+                .send(MonoDisplayCommand::WriteStr(
+                    String::try_from(" \n").unwrap(),
+                ))
+                .await;
+        }
+
+        // display the menu
+
+        //test_text_on_each_line().await;
 
         // turn all leds off and go to next state
         //all_leds_off().await;

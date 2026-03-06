@@ -9,13 +9,21 @@ pub enum MenuFolder {
     Tests,
 }
 
-impl fmt::Display for MenuFolder {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            MenuFolder::Tests => "Tests",
-        };
+// impl fmt::Display for MenuFolder {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let s = match self {
+//             MenuFolder::Tests => "Tests",
+//         };
 
-        write!(f, "{}", s)
+//         write!(f, "{}", s)
+//     }
+// }
+
+impl MenuFolder {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MenuFolder::Tests => "Tests",
+        }
     }
 }
 
@@ -28,15 +36,25 @@ pub enum MenuProgram {
     BuzzerTest,
 }
 
-impl fmt::Display for MenuProgram {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
+// impl fmt::Display for MenuProgram {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let s = match self {
+//             MenuProgram::LightShow => "LightShow",
+//             MenuProgram::Beeper => "Beeper",
+//             MenuProgram::BuzzerTest => "BuzzerTest",
+//         };
+
+//         write!(f, "{}", s)
+//     }
+// }
+
+impl MenuProgram {
+    pub fn as_str(&self) -> &'static str {
+        match self {
             MenuProgram::LightShow => "LightShow",
             MenuProgram::Beeper => "Beeper",
             MenuProgram::BuzzerTest => "BuzzerTest",
-        };
-
-        write!(f, "{}", s)
+        }
     }
 }
 
