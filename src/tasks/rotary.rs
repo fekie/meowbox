@@ -15,6 +15,7 @@ use super::{
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
     leds::LightRing,
+    menu::MenuStatusHandle,
     tasks::{
         menu_scroll::{MENU_SCROLL_CH, MenuScrollCommand},
         neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
@@ -123,9 +124,12 @@ pub async fn left_rotary_rotation_watcher(
                 // as_mut().unwrap().set_low();
                 light_ring.forward().await;
 
-                MENU_SCROLL_CH
-                    .send(MenuScrollCommand::Forwards)
-                    .await;
+                let menu_status_handle = MenuStatusHandle::new();
+
+                let mut scroll = menu_status_handle.scroll();
+                scroll = (scroll + 1) % 2;
+                menu_status_handle.set_scroll(scroll);
+                menu_status_handle.set_needs_update(true);
             }
             Direction::Anticlockwise => {
                 // RED_LED.lock().await.as_mut().unwrap().set_high();
@@ -133,9 +137,16 @@ pub async fn left_rotary_rotation_watcher(
                 // set_low();
                 light_ring.backward().await;
 
-                MENU_SCROLL_CH
-                    .send(MenuScrollCommand::Backwards)
-                    .await;
+                let menu_status_handle = MenuStatusHandle::new();
+
+                let mut scroll = menu_status_handle.scroll();
+                if scroll == 0 {
+                    scroll = 2;
+                } else {
+                    scroll -= 1;
+                }
+                menu_status_handle.set_scroll(scroll);
+                menu_status_handle.set_needs_update(true);
             }
             Direction::None => {}
         }

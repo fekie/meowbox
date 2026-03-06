@@ -13,7 +13,7 @@ use smart_leds::{RGB8, SmartLedsWrite};
 pub static NEOPIXEL_CH: Channel<
     CriticalSectionRawMutex,
     NeopixelCommand,
-    20,
+    5,
 > = Channel::new();
 
 pub enum NeopixelCommand {

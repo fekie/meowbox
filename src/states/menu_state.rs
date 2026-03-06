@@ -4,7 +4,7 @@ use heapless::String;
 
 use super::{Meowbox, State};
 use crate::{
-    menutree::{MenuGeneralItem, MenuProgram},
+    menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle},
     states::{ErrorStateType, MenuState, Stage},
     tasks::{
         all_leds_off,
@@ -116,8 +116,22 @@ impl Meowbox {
             //info!("display menu");
         }
 
-        let menu_offset = CURRENT_MENU_SCROLL
-            .load(core::sync::atomic::Ordering::SeqCst);
+        let menu_status_handle = MenuStatusHandle::new();
+
+        // if it doesnt need an update then return early
+        if !menu_status_handle.needs_update() {
+            return;
+        }
+
+        // set it to no longer need update
+        menu_status_handle.set_needs_update(false);
+
+        let scroll = menu_status_handle.scroll();
+
+        MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
+        // let menu_offset = CURRENT_MENU_SCROLL
+        //     .load(core::sync::atomic::Ordering::SeqCst);
 
         for general_item in self
             .resources
@@ -125,7 +139,7 @@ impl Meowbox {
             .menu_tree
             .layer_0
             .iter()
-            .skip(menu_offset)
+            .skip(scroll)
         {
             // let name = match general_item {
             //     MenuGeneralItem::MenuProgram(x) => {

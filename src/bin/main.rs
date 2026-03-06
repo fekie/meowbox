@@ -17,7 +17,6 @@ use esp_println::println;
 use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED},
-    menutree,
     states::{MenuState, Meowbox, Stage, State},
     tasks::{
         menu_scroll::menu_scroll_command_listener,
