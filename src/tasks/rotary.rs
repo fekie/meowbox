@@ -48,6 +48,7 @@ pub async fn rotary_switch_left_event(
     }
 }
 
+/// meow
 #[task]
 pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,

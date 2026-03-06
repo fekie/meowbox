@@ -17,6 +17,7 @@ use esp_println::println;
 use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED},
+    menutree,
     states::{MenuState, Meowbox, Stage, State},
     tasks::{
         mono_display::{
@@ -76,6 +77,16 @@ async fn main(spawner: Spawner) -> ! {
         "{} {} {} {} {}",
         meow[0], meow[1], meow[2], meow[3], meow[4]
     );
+
+    // let arena = &mut Arena::new();
+
+    // // Add some new nodes to the arena
+    // let a = arena.new_node(1);
+    // let b = arena.new_node(2);
+
+    // // Append b to a
+    // a.append(b, arena);
+    // assert_eq!(b.ancestors(arena).into_iter().count(), 2);
 
     // Enable the watchdog timer and feed it for the first time
     //non_mutex_peripherals.timg1.wdt.enable();
@@ -218,6 +229,8 @@ async fn main(spawner: Spawner) -> ! {
     //     Stage::Setup,
     //     meowbox::states::FlowFieldState::Fast,
     // );
+
+    let menu_tree = menutree::MenuTree::new();
 
     let mut meowbox = Meowbox::new(state);
     // turn red led back on to compensate for menu turning it off
