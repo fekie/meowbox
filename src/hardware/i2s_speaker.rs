@@ -9,14 +9,17 @@ use esp_hal::{
     time::Rate,
 };
 
-pub fn init<'d>(
-    i2s0: I2S0<'d>,
-    dma: DMA_CH0<'d>,
-    gpio37: GPIO37<'d>,
-    gpio38: GPIO38<'d>,
-    gpio39: GPIO39<'d>,
-    gpio40: GPIO40<'d>,
-) -> I2s<'d, Blocking> {
+// The 'a lifetime is used because the I2s interface the function
+// returns can only last for as long as the gpio interfaces do.
+/// Intiailize the i2s speaker.
+pub fn init<'a>(
+    i2s0: I2S0<'a>,
+    dma: DMA_CH0<'a>,
+    gpio37: GPIO37<'a>,
+    gpio38: GPIO38<'a>,
+    gpio39: GPIO39<'a>,
+    gpio40: GPIO40<'a>,
+) -> I2s<'a, Blocking> {
     // for some really weird reason, sd on this chip stands for
     // shutdown, and not serial data (which is what the i2s
     // protocol uses, but this chip calls it din)

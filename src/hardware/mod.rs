@@ -28,7 +28,7 @@ use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
-pub mod i2s;
+pub mod i2s_speaker;
 
 use crate::tasks::mono_display::MonoDisplay;
 
@@ -95,7 +95,7 @@ pub struct NonMutexPeripherals {
     pub flash: FLASH<'static>,
     // it has a buffer size of one because there is only one neopixel
     pub neopixel: SmartLedsAdapter<'static, 25>,
-    pub i2s: I2s<'static, esp_hal::Blocking>,
+    pub i2s_speaker: I2s<'static, esp_hal::Blocking>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -276,7 +276,7 @@ pub async fn init_peripherals(
     let neopixel =
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
-    let i2s = i2s::init(
+    let i2s_speaker = i2s_speaker::init(
         peripherals.I2S0,
         peripherals.DMA_CH0,
         peripherals.GPIO37,
@@ -295,6 +295,6 @@ pub async fn init_peripherals(
         right_rotary_b,
         flash, //simple_speaker,
         neopixel,
-        i2s,
+        i2s_speaker,
     }
 }
