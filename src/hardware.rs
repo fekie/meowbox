@@ -274,7 +274,10 @@ pub async fn init_peripherals(
     let neopixel =
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
-    // Enable amp for i2s module
+    // for some really weird reason, sd on this chip stands for
+    // shutdown, and not serial data (which is what the i2s
+    // protocol uses, but this chip calls it din) enable the
+    // amplifier
     let _sd = Output::new(
         peripherals.GPIO37,
         Level::High,
