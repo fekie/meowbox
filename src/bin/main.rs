@@ -5,14 +5,15 @@
     reason = "mem::forget is generally not safe to do with esp_hal types, especially those \
     holding buffers for the duration of a data transfer."
 )]
-#![allow(static_mut_refs)]
+
+use core::f32::consts::PI;
 
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use embedded_storage::{ReadStorage, Storage};
-use esp_hal::{clock::CpuClock, rng::Rng};
+use esp_hal::{clock::CpuClock, dma::DmaDescriptor, rng::Rng};
 use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
@@ -26,6 +27,7 @@ use meowbox::{
         neopixel::NeoPixelHandle,
     },
 };
+use micromath::F32Ext;
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -40,10 +42,15 @@ use meowbox::tasks::{
     right_rotary_rotation_watcher, rotary_switch_left_event,
     rotary_switch_right_event,
 };
+use static_cell::StaticCell;
 
 // This creates a default app-descriptor required by the esp-idf
 // bootloader. For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
+
+static DESCRIPTORS: StaticCell<[DmaDescriptor; 8]> =
+    StaticCell::new();
+static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
@@ -78,19 +85,14 @@ async fn main(spawner: Spawner) -> ! {
         meow[0], meow[1], meow[2], meow[3], meow[4]
     );
 
-    use core::f32::consts::PI;
+    // static mut DESCRIPTORS: [DmaDescriptor; 8] =
+    //     [DmaDescriptor::EMPTY; 8];
+    // static mut BUFFER: [u8; 2048] = [0; 2048];
 
-    use esp_hal::dma::DmaDescriptor;
-    use micromath::F32Ext;
+    let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
+    let buffer = BUFFER.init([0u8; 2048]);
 
-    static mut DESCRIPTORS: [DmaDescriptor; 8] =
-        [DmaDescriptor::EMPTY; 8];
-    static mut BUFFER: [u8; 2048] = [0; 2048];
-
-    let mut tx = non_mutex_peripherals
-        .i2s
-        .i2s_tx
-        .build(unsafe { &mut DESCRIPTORS });
+    let mut tx = non_mutex_peripherals.i2s.i2s_tx.build(descriptors);
 
     // =========================
     // Audio generation (sine wave)
@@ -100,12 +102,10 @@ async fn main(spawner: Spawner) -> ! {
     let freq = 440.0; // A4 tone
 
     loop {
-        let buf = unsafe { &mut BUFFER };
-
-        for chunk in buf.chunks_exact_mut(4) {
+        for chunk in buffer.chunks_exact_mut(4) {
             let sample = (phase.sin() * 8000.0) as i16;
 
-            // stereo (duplicate L + R)
+            // stereo
             chunk[0] = sample as u8;
             chunk[1] = (sample >> 8) as u8;
             chunk[2] = sample as u8;
@@ -118,7 +118,7 @@ async fn main(spawner: Spawner) -> ! {
         }
 
         // send to I2S
-        tx.write_dma(buf).unwrap();
+        let _ = tx.write_dma(buffer).unwrap();
     }
 
     // let arena = &mut Arena::new();
