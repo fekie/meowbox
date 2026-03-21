@@ -5,13 +5,18 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Timer};
 use esp_hal::{
-    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
+    clock::CpuClock,
+    gpio::{
+        Input, InputConfig, Io, Level, Output, OutputConfig,
+        OutputSignal, Pull, interconnect::PeripheralOutput,
+    },
     i2c::master::{Config as I2cConfig, I2c},
+    i2s::master::{Config, DataFormat, I2s},
     ledc::{
         Ledc, LowSpeed,
         timer::{self, TimerIFace},
     },
-    peripherals::FLASH,
+    peripherals::{FLASH, Peripherals},
     rmt::{PulseCode, Rmt},
     time::Rate,
     timer::timg::TimerGroup,
@@ -73,20 +78,11 @@ pub type MonoDisplayType =
 static BAR: static_cell::StaticCell<MonoDisplayType> =
     static_cell::StaticCell::new();
 
-use esp_hal::{
-    clock::CpuClock,
-    gpio::Io,
-    i2s::master::{DataFormat, I2s},
-    peripherals::Peripherals,
-};
-
 pub type Display = Ssd1306Async<
     I2CInterface<I2c<'static, esp_hal::Async>>,
     DisplaySize128x64,
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
 >;
-
-use esp_hal::i2s::master::Config;
 
 pub struct NonMutexPeripherals {
     pub display: Display,
@@ -275,32 +271,16 @@ pub async fn init_peripherals(
     let rmt_buffer =
         RMT_BUFFER.init([PulseCode::end_marker(); buffer_size(1)]);
 
-    let mut neopixel =
+    let neopixel =
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
-    use esp_hal::{
-        clock::CpuClock,
-        gpio::{
-            Level, Output, OutputConfig, OutputSignal,
-            interconnect::PeripheralOutput,
-        },
-        i2s::master::{Config, DataFormat, I2s},
-        peripherals::Peripherals,
-        time::Rate,
-    };
-
-    // ⚠️ use steal (not take)
-    let peripherals = unsafe { Peripherals::steal() };
-    let clocks = CpuClock::max();
-
-    // Enable amp
+    // Enable amp for i2s module
     let _sd = Output::new(
         peripherals.GPIO37,
         Level::High,
         OutputConfig::default(),
     );
 
-    // ✅ ROUTE I2S SIGNALS (THIS is the ONLY correct way)
     peripherals
         .GPIO38
         .connect_peripheral_to_output(OutputSignal::I2S0O_SD);
@@ -318,26 +298,9 @@ pub async fn init_peripherals(
         .with_tx_config(Default::default());
 
     // Create I2S
-    let mut i2s: I2s<'_, esp_hal::Blocking> =
+    let i2s: I2s<'_, esp_hal::Blocking> =
         I2s::new(peripherals.I2S0, peripherals.DMA_CH0, config)
             .unwrap();
-
-    // turn red
-    //neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
-
-    // let led_pin = Output::new(
-    //     peripherals.GPIO48,
-    //     Level::High,
-    //     output_config_default,
-    // );
-
-    //let neopixel_pin = peripherals.GPIO38.into_push_pull_output();
-
-    //let channel = peripherals.rmt.channel0;
-    //let mut ws2812 = Ws2812Esp32Rmt::new(channel,
-    // led_pin).unwrap();
-
-    //let mut hue = unsafe { esp_random() } as u8;
 
     Timer::after(Duration::from_millis(1000)).await;
 

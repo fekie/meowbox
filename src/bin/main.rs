@@ -80,23 +80,11 @@ async fn main(spawner: Spawner) -> ! {
     flash.write(flash_addr, &foo2).unwrap();
     flash.read(flash_addr, &mut meow).unwrap();
 
-    println!(
-        "{} {} {} {} {}",
-        meow[0], meow[1], meow[2], meow[3], meow[4]
-    );
-
-    // static mut DESCRIPTORS: [DmaDescriptor; 8] =
-    //     [DmaDescriptor::EMPTY; 8];
-    // static mut BUFFER: [u8; 2048] = [0; 2048];
-
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
     let buffer = BUFFER.init([0u8; 2048]);
 
     let mut tx = non_mutex_peripherals.i2s.i2s_tx.build(descriptors);
 
-    // =========================
-    // Audio generation (sine wave)
-    // =========================
     let mut phase = 0.0f32;
     let sample_rate = 44_100.0;
     let freq = 440.0; // A4 tone
