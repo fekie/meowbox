@@ -92,7 +92,8 @@ async fn main(spawner: Spawner) -> ! {
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
     let buffer = BUFFER.init([0u8; 2048]);
 
-    let mut tx = non_mutex_peripherals.i2s.i2s_tx.build(descriptors);
+    let mut tx =
+        non_mutex_peripherals.i2s_speaker.i2s_tx.build(descriptors);
 
     let mut phase = 0.0f32;
     let sample_rate = 44_100.0;
