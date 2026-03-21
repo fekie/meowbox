@@ -73,13 +73,20 @@ pub type MonoDisplayType =
 static BAR: static_cell::StaticCell<MonoDisplayType> =
     static_cell::StaticCell::new();
 
-use esp_hal::peripherals::Peripherals;
+use esp_hal::{
+    clock::CpuClock,
+    gpio::Io,
+    i2s::master::{DataFormat, I2s},
+    peripherals::Peripherals,
+};
 
 pub type Display = Ssd1306Async<
     I2CInterface<I2c<'static, esp_hal::Async>>,
     DisplaySize128x64,
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
 >;
+
+use esp_hal::i2s::master::Config;
 
 pub struct NonMutexPeripherals {
     pub display: Display,
@@ -269,6 +276,43 @@ pub async fn init_peripherals(
 
     let mut neopixel =
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
+
+    let io = Io::new(peripherals.IO_MUX);
+    let bclk = peripherals.GPIO39;
+    let ws = peripherals.GPIO40; // LRC / WS
+    let dout = peripherals.GPIO38;
+
+    // this is the enable pin, so it must be on
+    let mut sd = Output::new(
+        peripherals.GPIO37,
+        esp_hal::gpio::Level::High,
+        output_config_default,
+    );
+
+    use esp_hal::{
+        i2s::master::{Config, DataFormat, TxConfig},
+        time::Rate,
+    };
+
+    let tx_config = TxConfig::default()
+        .with_bclk(peripherals.GPIO39)
+        .with_ws(peripherals.GPIO40)
+        .with_dout(peripherals.GPIO38);
+
+    let config = Config::default()
+        .with_sample_rate(Rate::from_hz(44_100))
+        .with_data_format(DataFormat::Data16Channel16)
+        .with_tx_config(Default::default());
+
+    let mut i2s =
+        I2s::new(peripherals.I2S0, peripherals.DMA_CH0, config)
+            .unwrap();
+
+    i2s.set_tx_pins(
+        peripherals.GPIO38, // DIN
+        peripherals.GPIO39, // BCLK
+        peripherals.GPIO40, // WS
+    );
 
     // turn red
     //neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
