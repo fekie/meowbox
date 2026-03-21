@@ -277,42 +277,55 @@ pub async fn init_peripherals(
     let mut neopixel =
         SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
-    let io = Io::new(peripherals.IO_MUX);
-    let bclk = peripherals.GPIO39;
-    let ws = peripherals.GPIO40; // LRC / WS
-    let dout = peripherals.GPIO38;
-
-    // this is the enable pin, so it must be on
-    let mut sd = Output::new(
-        peripherals.GPIO37,
-        esp_hal::gpio::Level::High,
-        output_config_default,
-    );
-
     use esp_hal::{
-        i2s::master::{Config, DataFormat, TxConfig},
+        clock::CpuClock,
+        gpio::{
+            Level, Output, OutputConfig, OutputSignal,
+            interconnect::PeripheralOutput,
+        },
+        i2s::master::{Config, DataFormat, I2s},
+        peripherals::Peripherals,
         time::Rate,
     };
 
-    let tx_config = TxConfig::default()
-        .with_bclk(peripherals.GPIO39)
-        .with_ws(peripherals.GPIO40)
-        .with_dout(peripherals.GPIO38);
+    // ⚠️ use steal (not take)
+    let peripherals = unsafe { Peripherals::steal() };
+    let clocks = CpuClock::max();
 
+    // Enable amp
+    let _sd = Output::new(
+        peripherals.GPIO37,
+        Level::High,
+        OutputConfig::default(),
+    );
+
+    // ✅ ROUTE I2S SIGNALS (THIS is the ONLY correct way)
+    peripherals
+        .GPIO38
+        .connect_peripheral_to_output(OutputSignal::I2S0O_SD);
+    peripherals
+        .GPIO39
+        .connect_peripheral_to_output(OutputSignal::I2S0O_BCK);
+    peripherals
+        .GPIO40
+        .connect_peripheral_to_output(OutputSignal::I2S0O_WS);
+
+    // I2S config
     let config = Config::default()
         .with_sample_rate(Rate::from_hz(44_100))
         .with_data_format(DataFormat::Data16Channel16)
         .with_tx_config(Default::default());
 
+    // Create I2S
     let mut i2s =
         I2s::new(peripherals.I2S0, peripherals.DMA_CH0, config)
             .unwrap();
 
-    i2s.set_tx_pins(
-        peripherals.GPIO38, // DIN
-        peripherals.GPIO39, // BCLK
-        peripherals.GPIO40, // WS
-    );
+    // I2S config
+    let config = Config::default()
+        .with_sample_rate(Rate::from_hz(44_100))
+        .with_data_format(DataFormat::Data16Channel16)
+        .with_tx_config(Default::default());
 
     // turn red
     //neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
