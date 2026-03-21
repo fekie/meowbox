@@ -276,14 +276,16 @@ pub async fn init_peripherals(
 
     // for some really weird reason, sd on this chip stands for
     // shutdown, and not serial data (which is what the i2s
-    // protocol uses, but this chip calls it din) enable the
-    // amplifier
-    let _sd = Output::new(
+    // protocol uses, but this chip calls it din)
+    //
+    // enable the amplifier by setting the shutdown pin to high
+    let _shutdown = Output::new(
         peripherals.GPIO37,
         Level::High,
         OutputConfig::default(),
     );
 
+    // connect physical output pins to the i2s signal pins
     peripherals
         .GPIO38
         .connect_peripheral_to_output(OutputSignal::I2S0O_SD);
@@ -294,13 +296,20 @@ pub async fn init_peripherals(
         .GPIO40
         .connect_peripheral_to_output(OutputSignal::I2S0O_WS);
 
-    // I2S config
+    // make I2S config. sample rate of 44.1kHz
     let config = Config::default()
         .with_sample_rate(Rate::from_hz(44_100))
+        // the data format specifies that each frame will be 16 bits,
+        // with no padding. from my understanding of i2s, the
+        // data line alternates between the left and
+        // right channel.
         .with_data_format(DataFormat::Data16Channel16)
         .with_tx_config(Default::default());
 
-    // Create I2S
+    // Create I2S.
+    // the dma channel means that we are able to occassionally write
+    // to a memory buffer that is read directy by the i2s device,
+    // instead of having the cpu bitbang out a signal
     let i2s: I2s<'_, esp_hal::Blocking> =
         I2s::new(peripherals.I2S0, peripherals.DMA_CH0, config)
             .unwrap();
