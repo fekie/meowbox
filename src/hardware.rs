@@ -97,6 +97,7 @@ pub struct NonMutexPeripherals {
     pub flash: FLASH<'static>,
     // it has a buffer size of one because there is only one neopixel
     pub neopixel: SmartLedsAdapter<'static, 25>,
+    pub i2s: I2s<'static, esp_hal::Blocking>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -317,15 +318,9 @@ pub async fn init_peripherals(
         .with_tx_config(Default::default());
 
     // Create I2S
-    let mut i2s =
+    let mut i2s: I2s<'_, esp_hal::Blocking> =
         I2s::new(peripherals.I2S0, peripherals.DMA_CH0, config)
             .unwrap();
-
-    // I2S config
-    let config = Config::default()
-        .with_sample_rate(Rate::from_hz(44_100))
-        .with_data_format(DataFormat::Data16Channel16)
-        .with_tx_config(Default::default());
 
     // turn red
     //neopixel.write([RGB8 { r: 20, g: 0, b: 20 }]).unwrap();
@@ -354,5 +349,6 @@ pub async fn init_peripherals(
         right_rotary_b,
         flash, //simple_speaker,
         neopixel,
+        i2s,
     }
 }

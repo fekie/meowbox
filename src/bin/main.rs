@@ -5,6 +5,7 @@
     reason = "mem::forget is generally not safe to do with esp_hal types, especially those \
     holding buffers for the duration of a data transfer."
 )]
+#![allow(static_mut_refs)]
 
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
@@ -25,9 +26,6 @@ use meowbox::{
         neopixel::NeoPixelHandle,
     },
 };
-
-
-
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -79,6 +77,49 @@ async fn main(spawner: Spawner) -> ! {
         "{} {} {} {} {}",
         meow[0], meow[1], meow[2], meow[3], meow[4]
     );
+
+    use core::f32::consts::PI;
+
+    use esp_hal::dma::DmaDescriptor;
+    use micromath::F32Ext;
+
+    static mut DESCRIPTORS: [DmaDescriptor; 8] =
+        [DmaDescriptor::EMPTY; 8];
+    static mut BUFFER: [u8; 2048] = [0; 2048];
+
+    let mut tx = non_mutex_peripherals
+        .i2s
+        .i2s_tx
+        .build(unsafe { &mut DESCRIPTORS });
+
+    // =========================
+    // Audio generation (sine wave)
+    // =========================
+    let mut phase = 0.0f32;
+    let sample_rate = 44_100.0;
+    let freq = 440.0; // A4 tone
+
+    loop {
+        let buf = unsafe { &mut BUFFER };
+
+        for chunk in buf.chunks_exact_mut(4) {
+            let sample = (phase.sin() * 8000.0) as i16;
+
+            // stereo (duplicate L + R)
+            chunk[0] = sample as u8;
+            chunk[1] = (sample >> 8) as u8;
+            chunk[2] = sample as u8;
+            chunk[3] = (sample >> 8) as u8;
+
+            phase += 2.0 * PI * freq / sample_rate;
+            if phase > 2.0 * PI {
+                phase -= 2.0 * PI;
+            }
+        }
+
+        // send to I2S
+        tx.write_dma(buf).unwrap();
+    }
 
     // let arena = &mut Arena::new();
 
