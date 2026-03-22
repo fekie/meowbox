@@ -29,6 +29,7 @@ use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
 pub mod i2s_speaker;
+pub mod neopixel;
 
 use crate::tasks::mono_display::MonoDisplay;
 
@@ -57,11 +58,6 @@ pub type RotarySwitchType =
     Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
 pub static ROTARY_SWITCH_LEFT: RotarySwitchType = Mutex::new(None);
 pub static ROTARY_SWITCH_RIGHT: RotarySwitchType = Mutex::new(None);
-
-//pub type RotaryLineType = Mutex<CriticalSectionRawMutex,
-// Option<Input<'static>>>; pub static ROTARY_RIGHT_A: RotaryLineType
-// = Mutex::new(None); pub static ROTARY_RIGHT_B: RotaryLineType =
-// Mutex::new(None);
 
 pub type LEDType =
     Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
@@ -246,35 +242,14 @@ pub async fn init_peripherals(
     )
     .into_buffered_graphics_mode();
 
-    let ledc = Ledc::new(peripherals.LEDC);
-
-    let mut timer = ledc.timer::<LowSpeed>(timer::Number::Timer0);
-    timer
-        .configure(timer::config::Config {
-            duty: timer::config::Duty::Duty10Bit,
-            clock_source: timer::LSClockSource::APBClk,
-            frequency: Rate::from_hz(2000),
-        })
-        .unwrap();
-
     let flash = peripherals.FLASH;
 
-    static RMT_BUFFER: StaticCell<[PulseCode; buffer_size(1)]> =
-        StaticCell::new();
-
-    let rmt = Rmt::new(peripherals.RMT, Rate::from_mhz(80)).unwrap();
-
-    let neopixel_pin = Output::new(
+    let neopixel = neopixel::init(
+        peripherals.LEDC,
+        peripherals.RMT,
         peripherals.GPIO48,
-        Level::Low,
         output_config_default,
     );
-
-    let rmt_buffer =
-        RMT_BUFFER.init([PulseCode::end_marker(); buffer_size(1)]);
-
-    let neopixel =
-        SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
 
     let i2s_speaker = i2s_speaker::init(
         peripherals.I2S0,

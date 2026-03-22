@@ -99,26 +99,6 @@ async fn main(spawner: Spawner) -> ! {
     let sample_rate = 44_100.0;
     let freq = 440.0; // A4 tone
 
-    loop {
-        for chunk in buffer.chunks_exact_mut(4) {
-            let sample = (phase.sin() * 8000.0) as i16;
-
-            // stereo
-            chunk[0] = sample as u8;
-            chunk[1] = (sample >> 8) as u8;
-            chunk[2] = sample as u8;
-            chunk[3] = (sample >> 8) as u8;
-
-            phase += 2.0 * PI * freq / sample_rate;
-            if phase > 2.0 * PI {
-                phase -= 2.0 * PI;
-            }
-        }
-
-        // send to I2S
-        let _ = tx.write_dma(buffer).unwrap();
-    }
-
     // let arena = &mut Arena::new();
 
     // // Add some new nodes to the arena
@@ -275,6 +255,26 @@ async fn main(spawner: Spawner) -> ! {
 
     let mut meowbox = Meowbox::new(state);
     // turn red led back on to compensate for menu turning it off
+
+    loop {
+        for chunk in buffer.chunks_exact_mut(4) {
+            let sample = (phase.sin() * 8000.0) as i16;
+
+            // stereo
+            chunk[0] = sample as u8;
+            chunk[1] = (sample >> 8) as u8;
+            chunk[2] = sample as u8;
+            chunk[3] = (sample >> 8) as u8;
+
+            phase += 2.0 * PI * freq / sample_rate;
+            if phase > 2.0 * PI {
+                phase -= 2.0 * PI;
+            }
+        }
+
+        // send to I2S
+        let _ = tx.write_dma(buffer).unwrap();
+    }
 
     loop {
         meowbox.tick().await;
