@@ -97,7 +97,9 @@ struct Speaker {}
 pub async fn speaker_task(speaker: SpeakerType) {
     // initialize static cell buffers
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
-    let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
+    let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) =
+        esp_hal::dma_buffers!(32000, 32000);
+    //let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
 
     let mut speaker_tx: SpeakerTxType =
         speaker.i2s_tx.build(descriptors);
@@ -110,7 +112,7 @@ pub async fn speaker_task(speaker: SpeakerType) {
         // command as normal.
         match cmd {
             SpeakerCommand::Sine440Hz(duration) => {
-                play_sine440hz(&mut speaker_tx, buffer, duration);
+                play_sine440hz(&mut speaker_tx, tx_buffer, duration);
             }
         }
     }
@@ -118,7 +120,7 @@ pub async fn speaker_task(speaker: SpeakerType) {
 
 fn play_sine440hz(
     speaker_tx: &mut SpeakerTxType,
-    buffer: &mut [u8; 2048],
+    buffer: &mut [u8; 32000],
     duration: Duration,
 ) {
     let mut phase = 0.0f32;
