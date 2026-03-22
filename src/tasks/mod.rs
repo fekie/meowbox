@@ -14,8 +14,13 @@ pub use rotary::{
 };
 
 use super::hardware;
-use crate::hardware::LED_ARRAY;
-pub use crate::hardware::mono_display::display_task;
+use crate::hardware::{
+    LED_ARRAY,
+    speaker::{SPEAKER_CHANNEL, SpeakerCommand},
+};
+pub use crate::hardware::{
+    mono_display::display_task, speaker::speaker_task,
+};
 
 pub mod neopixel;
 pub mod rotary;
@@ -86,14 +91,20 @@ pub async fn right_button_event(
         info!("right button triggered");
 
         // wait 200ms and alternate buzzer
-        for _ in 0..200 {
-            buzzer.lock().await.as_mut().unwrap().toggle();
-            Timer::after(Duration::from_millis(1)).await;
-        }
+        // for _ in 0..200 {
+        //     buzzer.lock().await.as_mut().unwrap().toggle();
+        //     Timer::after(Duration::from_millis(1)).await;
+        // }
 
         //buzzer.lock().await.as_mut().unwrap().set_high();
         //Timer::after(Duration::from_millis(200)).await;
-        buzzer.lock().await.as_mut().unwrap().set_low();
+        //buzzer.lock().await.as_mut().unwrap().set_low();
+
+        // play a basic speaker sound
+        let _ = SPEAKER_CHANNEL.try_send(SpeakerCommand::Sine440Hz(
+            Duration::from_millis(500),
+        ));
+
         led.lock().await.as_mut().unwrap().set_high();
     }
 }

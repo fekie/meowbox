@@ -31,6 +31,7 @@ use meowbox::{
         neopixel_command_listener, play_sequence_listener,
         right_button_event, right_rotary_rotation_watcher,
         rotary_switch_left_event, rotary_switch_right_event,
+        speaker_task,
     },
 };
 use micromath::F32Ext;
@@ -86,16 +87,6 @@ async fn main(spawner: Spawner) -> ! {
     // static mut DESCRIPTORS: [DmaDescriptor; 8] =
     //     [DmaDescriptor::EMPTY; 8];
     // static mut BUFFER: [u8; 2048] = [0; 2048];
-
-    let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
-    let buffer = BUFFER.init([0u8; 2048]);
-
-    let mut tx =
-        non_mutex_peripherals.i2s_speaker.i2s_tx.build(descriptors);
-
-    let mut phase = 0.0f32;
-    let sample_rate = 44_100.0;
-    let freq = 440.0; // A4 tone
 
     // let arena = &mut Arena::new();
 
@@ -161,6 +152,9 @@ async fn main(spawner: Spawner) -> ! {
 
     // TODO: spawn this task
     let _ = spawner.spawn(display_task(mono_display));
+
+    let _ = spawner
+        .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
 
     let neopixel_handle = NeoPixelHandle::new();
     neopixel_handle.activate_with_hb(235, 30).await;

@@ -3,7 +3,7 @@ use core::f32::consts::PI;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
-use embassy_time::Duration;
+use embassy_time::{Duration, Instant};
 use esp_hal::{
     Blocking,
     clock::CpuClock,
@@ -94,7 +94,7 @@ struct Speaker {}
 /// A task that waits until a speaker command is sent. After receiving
 /// a channel input, it will play that sound.
 #[embassy_executor::task]
-pub async fn speaker_task(mut speaker: SpeakerType) {
+pub async fn speaker_task(speaker: SpeakerType) {
     // initialize static cell buffers
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
     let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
@@ -125,6 +125,8 @@ fn play_sine440hz(
     let sample_rate = 44_100.0;
     let freq = 440.0; // A4 tone
 
+    let start = Instant::now();
+
     loop {
         for chunk in buffer.chunks_exact_mut(4) {
             let sample = (phase.sin() * 8000.0) as i16;
@@ -143,5 +145,12 @@ fn play_sine440hz(
 
         // send to I2S
         let _ = speaker_tx.write_dma(buffer).unwrap();
+
+        // The sound will likely last longer a btt longer than the
+        // duration, as the i2s is reading directly from
+        // memory.
+        if start.elapsed() > duration {
+            break;
+        }
     }
 }
