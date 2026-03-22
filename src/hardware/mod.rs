@@ -33,7 +33,7 @@ pub mod mono_display;
 pub mod neopixel;
 pub mod speaker;
 
-use crate::tasks::mono_display::MonoDisplay;
+use mono_display::MonoDisplay;
 
 pub type ButtonType =
     Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
@@ -79,7 +79,7 @@ static BAR: static_cell::StaticCell<MonoDisplayType> =
     static_cell::StaticCell::new();
 
 pub struct NonMutexPeripherals {
-    pub display: mono_display::MonoDisplay,
+    pub display: mono_display::DisplayType,
     pub left_rotary_a: Input<'static>,
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,

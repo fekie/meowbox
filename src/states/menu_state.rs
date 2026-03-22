@@ -4,15 +4,12 @@ use heapless::String;
 
 use super::{Meowbox, State};
 use crate::{
+    hardware::mono_display::{
+        MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH, MonoDisplayCommand,
+    },
     menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle},
     states::{ErrorStateType, MenuState, Stage},
-    tasks::{
-        all_leds_off,
-        mono_display::{
-            MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
-            MonoDisplayCommand,
-        },
-    },
+    tasks::all_leds_off,
 };
 
 // Light Ring

@@ -7,7 +7,6 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Timer};
 use heapless::Vec;
-pub use mono_display::display_task;
 pub use neopixel::neopixel_command_listener;
 pub use rotary::{
     left_rotary_rotation_watcher, right_rotary_rotation_watcher,
@@ -16,8 +15,8 @@ pub use rotary::{
 
 use super::hardware;
 use crate::hardware::LED_ARRAY;
+pub use crate::hardware::mono_display::display_task;
 
-pub mod mono_display;
 pub mod neopixel;
 pub mod rotary;
 

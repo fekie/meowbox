@@ -18,14 +18,14 @@ use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
 use meowbox::{
-    hardware::{self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED},
-    states::{MenuState, Meowbox, Stage, State},
-    tasks::{
+    hardware::{
+        self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED,
         mono_display::{
             MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
         },
-        neopixel::NeoPixelHandle,
     },
+    states::{MenuState, Meowbox, Stage, State},
+    tasks::neopixel::NeoPixelHandle,
 };
 use micromath::F32Ext;
 
