@@ -28,6 +28,7 @@ use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
+pub mod i2c_display;
 pub mod i2s_speaker;
 pub mod neopixel;
 
@@ -76,14 +77,8 @@ pub type MonoDisplayType =
 static BAR: static_cell::StaticCell<MonoDisplayType> =
     static_cell::StaticCell::new();
 
-pub type Display = Ssd1306Async<
-    I2CInterface<I2c<'static, esp_hal::Async>>,
-    DisplaySize128x64,
-    ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
->;
-
 pub struct NonMutexPeripherals {
-    pub display: Display,
+    pub display: i2c_display::Display,
     pub left_rotary_a: Input<'static>,
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,
@@ -160,29 +155,6 @@ pub async fn init_peripherals(
         output_config_default,
     );
 
-    // let pbuzzer_top_left = Output::new(
-    //     peripherals.GPIO1,
-    //     Level::High,
-    //     output_config_default,
-    // );
-    // // let pbuzzer_top_right = Output::new(
-    // //     peripherals.GPIO20,
-    // //     Level::Low,
-    // //     output_config_default,
-    // // );
-    // let pbuzzer_bottom_left = Output::new(
-    //     peripherals.GPIO5,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-    // let pbuzzer_bottom_right = Output::new(
-    //     peripherals.GPIO13,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-
-    //Timer::after(Duration::from_millis(500)).await;
-
     let left_rotary_a = Input::new(peripherals.GPIO2, pull_up_config);
     let left_rotary_b =
         Input::new(peripherals.GPIO42, pull_up_config);
@@ -191,14 +163,6 @@ pub async fn init_peripherals(
         Input::new(peripherals.GPIO10, pull_up_config);
     let right_rotary_b =
         Input::new(peripherals.GPIO13, pull_up_config);
-
-    // let simple_speaker = Output::new(
-    //     peripherals.GPIO47,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-
-    //Timer::after(Duration::from_millis(500)).await;
 
     {
         *(RIGHT_BUTTON.lock().await) = Some(right_button);
@@ -209,12 +173,6 @@ pub async fn init_peripherals(
         *(ROTARY_SWITCH_LEFT.lock().await) = Some(rotary_switch_left);
         *(ROTARY_SWITCH_RIGHT.lock().await) =
             Some(rotary_switch_right);
-        // *(PBUZZER_TOP_LEFT.lock().await) = Some(pbuzzer_top_left);
-        //*(PBUZZER_TOP_RIGHT.lock().await) = Some(pbuzzer_top_right);
-        // *(PBUZZER_BOTTOM_LEFT.lock().await) =
-        //     Some(pbuzzer_bottom_left);
-        // *(PBUZZER_BOTTOM_RIGHT.lock().await) =
-        //     Some(pbuzzer_bottom_right);
 
         *(RED_LED.lock().await) = Some(red_led);
         *(GREEN_LED.lock().await) = Some(green_led);
@@ -223,24 +181,11 @@ pub async fn init_peripherals(
         *(WHITE_LED.lock().await) = Some(white_led);
     }
 
-    let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
+    let display = i2c_display::init(
         peripherals.I2C0,
-        // I2cConfig is alias of esp_hal::i2c::master::I2c::Config
-        I2cConfig::default().with_frequency(Rate::from_khz(400)),
-    )
-    .unwrap()
-    .with_scl(peripherals.GPIO6)
-    .with_sda(peripherals.GPIO7)
-    .into_async();
-
-    let interface = I2CDisplayInterface::new(i2c_bus);
-    // initialize the display
-    let display = Ssd1306Async::new(
-        interface,
-        DisplaySize128x64,
-        DisplayRotation::Rotate0,
-    )
-    .into_buffered_graphics_mode();
+        peripherals.GPIO6,
+        peripherals.GPIO7,
+    );
 
     let flash = peripherals.FLASH;
 

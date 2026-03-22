@@ -12,7 +12,7 @@ use esp_hal::{
 // The 'a lifetime is used because the I2s interface the function
 // returns can only last for as long as the gpio interfaces do.
 /// Intiailize the i2s speaker.
-pub fn init<'a>(
+pub(super) fn init<'a>(
     i2s0: I2S0<'a>,
     dma: DMA_CH0<'a>,
     gpio37: GPIO37<'a>,

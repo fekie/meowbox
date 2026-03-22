@@ -22,7 +22,7 @@ static RMT_BUFFER: StaticCell<
     [PulseCode; buffer_size(RMT_BUFFER_SIZE)],
 > = StaticCell::new();
 
-pub fn init<'a>(
+pub(super) fn init<'a>(
     ledc: LEDC<'a>,
     rmt: RMT<'a>,
     gpio48: GPIO48<'a>,
