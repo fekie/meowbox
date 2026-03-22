@@ -95,6 +95,7 @@ struct Speaker {}
 /// a channel input, it will play that sound.
 #[embassy_executor::task]
 pub async fn speaker_task(speaker: SpeakerType) {
+    // TODO: clean up all of this cause like, what the hell
     // initialize static cell buffers
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
     let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) =
