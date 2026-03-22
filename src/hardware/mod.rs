@@ -30,6 +30,7 @@ use static_cell::StaticCell;
 
 pub mod i2c_display;
 pub mod i2s_speaker;
+pub mod leds;
 pub mod neopixel;
 
 use crate::tasks::mono_display::MonoDisplay;
