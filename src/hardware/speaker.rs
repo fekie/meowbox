@@ -123,7 +123,7 @@ fn play_sine440hz(
 ) {
     let mut phase = 0.0f32;
     let sample_rate = 44_100.0;
-    let freq = 440.0; // A4 tone
+    let freq = 1000.0; // A4 tone
 
     let start = Instant::now();
 
