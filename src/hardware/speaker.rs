@@ -1,25 +1,64 @@
+use core::f32::consts::PI;
+
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
+};
+use embassy_time::Duration;
 use esp_hal::{
     Blocking,
+    clock::CpuClock,
+    dma::DmaDescriptor,
     gpio::{
         Level, Output, OutputConfig, OutputSignal,
         interconnect::PeripheralOutput as _,
     },
-    i2s::master::{Config, DataFormat, I2s},
+    i2s::master::{Config, DataFormat, I2s, I2sTx},
     peripherals::{DMA_CH0, GPIO37, GPIO38, GPIO39, GPIO40, I2S0},
+    rng::Rng,
     time::Rate,
 };
+use micromath::F32Ext;
+use static_cell::StaticCell;
+
+// NOTE: later on, it would be nice to have some kind of mixer to
+// where multiple sounds can be played at once.
+
+/// The speaker can buffer two sounds.
+const SPEAKER_BUFFER_CMD_SIZE: usize = 2;
+
+/// A channel to send commands to the speaker.
+pub static SPEAKER_CHANNEL: Channel<
+    CriticalSectionRawMutex,
+    SpeakerCommand,
+    SPEAKER_BUFFER_CMD_SIZE,
+> = Channel::new();
+
+#[derive(Clone)]
+pub enum SpeakerCommand {
+    Sine440Hz(embassy_time::Duration),
+}
+
+pub(super) type SpeakerType = I2s<'static, Blocking>;
+type SpeakerTxType = I2sTx<'static, Blocking>;
+
+// From my understanding, this involves the memory that we write to
+// that the i2s speaker directly reads from. So basically we are
+// occassionally filling a buffer.
+static DESCRIPTORS: StaticCell<[DmaDescriptor; 8]> =
+    StaticCell::new();
+static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
 // The 'a lifetime is used because the I2s interface the function
 // returns can only last for as long as the gpio interfaces do.
-/// Intiailize the i2s speaker.
-pub(super) fn init<'a>(
-    i2s0: I2S0<'a>,
-    dma: DMA_CH0<'a>,
-    gpio37: GPIO37<'a>,
-    gpio38: GPIO38<'a>,
-    gpio39: GPIO39<'a>,
-    gpio40: GPIO40<'a>,
-) -> I2s<'a, Blocking> {
+/// Intiailize the i2s speaker.``
+pub(super) fn init(
+    i2s0: I2S0<'static>,
+    dma: DMA_CH0<'static>,
+    gpio37: GPIO37<'static>,
+    gpio38: GPIO38<'static>,
+    gpio39: GPIO39<'static>,
+    gpio40: GPIO40<'static>,
+) -> SpeakerType {
     // for some really weird reason, sd on this chip stands for
     // shutdown, and not serial data (which is what the i2s
     // protocol uses, but this chip calls it din)
@@ -48,4 +87,61 @@ pub(super) fn init<'a>(
     // to a memory buffer that is read directy by the i2s device,
     // instead of having the cpu bitbang out a signal
     I2s::new(i2s0, dma, config).unwrap()
+}
+
+struct Speaker {}
+
+/// A task that waits until a speaker command is sent. After receiving
+/// a channel input, it will play that sound.
+#[embassy_executor::task]
+pub async fn speaker_task(mut speaker: SpeakerType) {
+    // initialize static cell buffers
+    let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
+    let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
+
+    let mut speaker_tx: SpeakerTxType =
+        speaker.i2s_tx.build(descriptors);
+
+    loop {
+        let cmd = SPEAKER_CHANNEL.receive().await;
+
+        // do a check to see if the command was to switch operating
+        // modes (which requires ownership). Otherwise, execute the
+        // command as normal.
+        match cmd {
+            SpeakerCommand::Sine440Hz(duration) => {
+                play_sine440hz(&mut speaker_tx, buffer, duration);
+            }
+        }
+    }
+}
+
+fn play_sine440hz(
+    speaker_tx: &mut SpeakerTxType,
+    buffer: &mut [u8; 2048],
+    duration: Duration,
+) {
+    let mut phase = 0.0f32;
+    let sample_rate = 44_100.0;
+    let freq = 440.0; // A4 tone
+
+    loop {
+        for chunk in buffer.chunks_exact_mut(4) {
+            let sample = (phase.sin() * 8000.0) as i16;
+
+            // stereo
+            chunk[0] = sample as u8;
+            chunk[1] = (sample >> 8) as u8;
+            chunk[2] = sample as u8;
+            chunk[3] = (sample >> 8) as u8;
+
+            phase += 2.0 * PI * freq / sample_rate;
+            if phase > 2.0 * PI {
+                phase -= 2.0 * PI;
+            }
+        }
+
+        // send to I2S
+        let _ = speaker_tx.write_dma(buffer).unwrap();
+    }
 }

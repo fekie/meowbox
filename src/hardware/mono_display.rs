@@ -34,6 +34,21 @@ pub type DisplayType = Ssd1306Async<
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
 >;
 
+// The available commands to send to the display
+#[derive(Clone)]
+pub enum MonoDisplayCommand {
+    /// Usable by Graphics and Terminal
+    Init,
+    /// Usable by Graphics and Terminal
+    Clear,
+    /// Usable by Graphics
+    SwitchToTerminal,
+    /// Usable by Terminal
+    SwitchToGraphics,
+    /// Write string. Usable by Terminal
+    WriteStr(String<MONO_DISPLAY_LINE_WIDTH>),
+}
+
 // For whatever reason, the compiler requires static here. I am
 // assuming something in the code below contains something that is
 // 'static.
@@ -62,21 +77,6 @@ pub(super) fn init(
         DisplayRotation::Rotate0,
     )
     .into_buffered_graphics_mode()
-}
-
-// The available commands to send to the display
-#[derive(Clone)]
-pub enum MonoDisplayCommand {
-    /// Usable by Graphics and Terminal
-    Init,
-    /// Usable by Graphics and Terminal
-    Clear,
-    /// Usable by Graphics
-    SwitchToTerminal,
-    /// Usable by Terminal
-    SwitchToGraphics,
-    /// Write string. Usable by Terminal
-    WriteStr(String<MONO_DISPLAY_LINE_WIDTH>),
 }
 
 #[embassy_executor::task]
