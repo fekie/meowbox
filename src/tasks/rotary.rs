@@ -14,7 +14,7 @@ use super::{
     LEDRotationParams, hardware,
 };
 use crate::{
-    hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
+    //hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
     leds::LightRing,
     menu::MenuStatusHandle,
     tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},

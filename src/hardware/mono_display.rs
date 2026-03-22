@@ -15,7 +15,7 @@ use static_cell::StaticCell;
 
 const I2C_FREQUENCY_KHZ: u32 = 400;
 
-pub type Display = Ssd1306Async<
+pub type MonoDisplay = Ssd1306Async<
     I2CInterface<I2c<'static, esp_hal::Async>>,
     DisplaySize128x64,
     ssd1306::mode::BufferedGraphicsModeAsync<DisplaySize128x64>,
@@ -28,7 +28,7 @@ pub(super) fn init(
     i2c0: I2C0<'static>,
     gpio6: GPIO6<'static>,
     gpio7: GPIO7<'static>,
-) -> Display {
+) -> MonoDisplay {
     let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
         i2c0,
         // I2cConfig is alias of esp_hal::i2c::master::I2c::Config

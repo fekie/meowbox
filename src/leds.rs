@@ -1,3 +1,6 @@
+// NOTE: Honestly I will likely change from mutexes into a
+// signal-command structure.
+
 use crate::{
     hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
     tasks::all_leds_off,

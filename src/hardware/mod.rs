@@ -28,10 +28,10 @@ use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
-pub mod i2c_display;
-pub mod i2s_speaker;
 pub mod leds;
+pub mod mono_display;
 pub mod neopixel;
+pub mod speaker;
 
 use crate::tasks::mono_display::MonoDisplay;
 
@@ -79,7 +79,7 @@ static BAR: static_cell::StaticCell<MonoDisplayType> =
     static_cell::StaticCell::new();
 
 pub struct NonMutexPeripherals {
-    pub display: i2c_display::Display,
+    pub display: mono_display::MonoDisplay,
     pub left_rotary_a: Input<'static>,
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,
@@ -182,7 +182,16 @@ pub async fn init_peripherals(
         *(WHITE_LED.lock().await) = Some(white_led);
     }
 
-    let display = i2c_display::init(
+    // Uncomment this after led handle is done
+    // leds::init(
+    //     peripherals.GPIO41,
+    //     peripherals.GPIO15,
+    //     peripherals.GPIO14,
+    //     peripherals.GPIO9,
+    //     peripherals.GPIO11,
+    // ).await;
+
+    let display = mono_display::init(
         peripherals.I2C0,
         peripherals.GPIO6,
         peripherals.GPIO7,
@@ -197,7 +206,7 @@ pub async fn init_peripherals(
         output_config_default,
     );
 
-    let i2s_speaker = i2s_speaker::init(
+    let i2s_speaker = speaker::init(
         peripherals.I2S0,
         peripherals.DMA_CH0,
         peripherals.GPIO37,
