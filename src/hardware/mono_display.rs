@@ -1,19 +1,32 @@
+use defmt::trace;
+#[allow(unused_imports)]
+use defmt::{error, info, warn};
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
+};
+use embassy_time::{Duration, Timer};
+use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
 use esp_hal::{
-    gpio::{Level, Output},
     i2c::master::{Config as I2cConfig, I2c},
-    ledc::{
-        Ledc, LowSpeed,
-        timer::{self, TimerIFace},
-    },
-    peripherals::{GPIO6, GPIO7, I2C0, LEDC, RMT},
-    rmt::{PulseCode, Rmt},
+    peripherals::{GPIO6, GPIO7, I2C0},
     time::Rate,
 };
-use esp_hal_smartled::{SmartLedsAdapter, buffer_size};
-use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
-use static_cell::StaticCell;
+use heapless::String;
+use ssd1306::{
+    I2CDisplayInterface, Ssd1306Async,
+    mode::{BufferedGraphicsModeAsync, TerminalModeAsync},
+    prelude::*,
+};
 
+pub const MONO_DISPLAY_LINE_WIDTH: usize = 16;
 const I2C_FREQUENCY_KHZ: u32 = 400;
+
+/// A channel to send commands to the display.
+pub static MONO_DISPLAY_CH: Channel<
+    CriticalSectionRawMutex,
+    MonoDisplayCommand,
+    20,
+> = Channel::new();
 
 pub type DisplayType = Ssd1306Async<
     I2CInterface<I2c<'static, esp_hal::Async>>,
@@ -50,29 +63,6 @@ pub(super) fn init(
     )
     .into_buffered_graphics_mode()
 }
-
-use defmt::trace;
-#[allow(unused_imports)]
-use defmt::{error, info, warn};
-use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
-};
-use embassy_time::{Duration, Timer};
-use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
-use heapless::String;
-use ssd1306::{
-    mode::{BufferedGraphicsModeAsync, TerminalModeAsync},
-    prelude::*,
-};
-
-pub const MONO_DISPLAY_LINE_WIDTH: usize = 16;
-
-/// A channel to send commands to the display.
-pub static MONO_DISPLAY_CH: Channel<
-    CriticalSectionRawMutex,
-    MonoDisplayCommand,
-    20,
-> = Channel::new();
 
 // The available commands to send to the display
 #[derive(Clone)]
