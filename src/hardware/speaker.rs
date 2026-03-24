@@ -41,6 +41,8 @@ pub enum SpeakerCommand {
 pub(super) type SpeakerType = I2s<'static, Blocking>;
 type SpeakerTxType = I2sTx<'static, Blocking>;
 
+pub const SPEAKER_SAMPLE_RATE: u32 = 44_100;
+
 // From my understanding, this involves the memory that we write to
 // that the i2s speaker directly reads from. So basically we are
 // occassionally filling a buffer.
@@ -74,7 +76,7 @@ pub(super) fn init(
 
     // make I2S config. sample rate of 44.1kHz
     let config = Config::default()
-        .with_sample_rate(Rate::from_hz(44_100))
+        .with_sample_rate(Rate::from_hz(SPEAKER_SAMPLE_RATE))
         // the data format specifies that each frame will be 16 bits,
         // with no padding. from my understanding of i2s, the
         // data line alternates between the left and
@@ -125,7 +127,7 @@ fn play_sine440hz(
     duration: Duration,
 ) {
     let mut phase = 0.0f32;
-    let sample_rate = 44_100.0;
+    let sample_rate = SPEAKER_SAMPLE_RATE as f32;
     let freq = 440.0; // A4 tone
 
     let start = Instant::now();
