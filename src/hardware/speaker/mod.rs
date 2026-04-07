@@ -145,6 +145,8 @@ fn play_sine440hz(
 
     let start = Instant::now();
 
+    let _ = speaker_tx.write_dma(buffer).unwrap();
+
     loop {
         for chunk in buffer.chunks_exact_mut(4) {
             let sample = (phase.sin() * 8000.0) as i16;
@@ -162,13 +164,70 @@ fn play_sine440hz(
         }
 
         // send to I2S
-        let _ = speaker_tx.write_dma(buffer).unwrap();
+        //let _ = speaker_tx.write_dma(buffer).unwrap();
 
         // The sound will likely last longer a btt longer than the
         // duration, as the i2s is reading directly from
         // memory.
         if start.elapsed() > duration {
             break;
+        }
+    }
+}
+
+async fn play_sine440hz_circular(
+    speaker_tx: &mut SpeakerTxType,
+    tx_buffer: &mut [u8; 32000],
+    duration: Duration,
+) {
+    let mut phase = 0.0f32;
+    let sample_rate = SPEAKER_SAMPLE_RATE as f32;
+    let freq = 440.0;
+
+    fill_sine(tx_buffer, &mut phase, freq, sample_rate);
+
+    let ptr = tx_buffer.as_mut_ptr();
+    let len = tx_buffer.len();
+
+    let mut transfer =
+        speaker_tx.write_dma_circular(tx_buffer).unwrap();
+
+    let first =
+        unsafe { core::slice::from_raw_parts_mut(ptr, len / 2) };
+    let second = unsafe {
+        core::slice::from_raw_parts_mut(ptr.add(len / 2), len / 2)
+    };
+
+    let start = Instant::now();
+
+    while start.elapsed() < duration {
+        fill_sine(first, &mut phase, freq, sample_rate);
+        embassy_time::Timer::after_millis(90).await;
+
+        fill_sine(second, &mut phase, freq, sample_rate);
+        embassy_time::Timer::after_millis(90).await;
+    }
+
+    drop(transfer);
+}
+
+fn fill_sine(
+    buffer: &mut [u8],
+    phase: &mut f32,
+    freq: f32,
+    sample_rate: f32,
+) {
+    for chunk in buffer.chunks_exact_mut(4) {
+        let sample = (phase.sin() * 8000.0) as i16;
+
+        chunk[0] = sample as u8;
+        chunk[1] = (sample >> 8) as u8;
+        chunk[2] = sample as u8;
+        chunk[3] = (sample >> 8) as u8;
+
+        *phase += 2.0 * PI * freq / sample_rate;
+        if *phase > 2.0 * PI {
+            *phase -= 2.0 * PI;
         }
     }
 }
