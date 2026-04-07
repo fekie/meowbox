@@ -20,6 +20,15 @@ use esp_hal::{
 use micromath::F32Ext;
 use static_cell::StaticCell;
 
+pub static _A: Channel<CriticalSectionRawMutex, (), 20> =
+    Channel::new();
+
+// NOTE: the system module is used for playing system sounds, and the
+// user channel is used for playing user sounds (i.e. programs playing
+// their own sounds).
+pub mod system;
+pub mod user;
+
 // NOTE: later on, it would be nice to have some kind of mixer to
 // where multiple sounds can be played at once.
 
@@ -91,7 +100,11 @@ pub(super) fn init(
     I2s::new(i2s0, dma, config).unwrap()
 }
 
-struct Speaker {}
+/// The speaker contains 4 channels that will be mixed.
+/// The first two are used for system sounds. The last
+/// two are used for playing extra sounds specified by
+/// other parts of the program.
+struct SpeakerChannelPool {}
 
 /// A task that waits until a speaker command is sent. After receiving
 /// a channel input, it will play that sound.
