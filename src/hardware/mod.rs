@@ -87,7 +87,7 @@ pub struct NonMutexPeripherals {
     pub flash: FLASH<'static>,
     // it has a buffer size of one because there is only one neopixel
     pub neopixel: SmartLedsAdapter<'static, 25>,
-    pub i2s_speaker: I2s<'static, esp_hal::Blocking>,
+    pub i2s_speaker: I2s<'static, esp_hal::Async>,
 }
 
 /// Initializes peripherals and assigns them to their respective

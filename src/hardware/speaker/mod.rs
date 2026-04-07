@@ -5,7 +5,7 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Instant};
 use esp_hal::{
-    Blocking,
+    Async, Blocking,
     clock::CpuClock,
     dma::DmaDescriptor,
     gpio::{
@@ -47,8 +47,8 @@ pub enum SpeakerCommand {
     Sine440Hz(embassy_time::Duration),
 }
 
-pub(super) type SpeakerType = I2s<'static, Blocking>;
-type SpeakerTxType = I2sTx<'static, Blocking>;
+pub(super) type SpeakerType = I2s<'static, Async>;
+type SpeakerTxType = I2sTx<'static, Async>;
 
 pub const SPEAKER_SAMPLE_RATE: u32 = 44_100;
 
@@ -97,7 +97,7 @@ pub(super) fn init(
     // the dma channel means that we are able to occassionally write
     // to a memory buffer that is read directy by the i2s device,
     // instead of having the cpu bitbang out a signal
-    I2s::new(i2s0, dma, config).unwrap()
+    I2s::new(i2s0, dma, config).unwrap().into_async()
 }
 
 /// The speaker contains 4 channels that will be mixed.
@@ -175,40 +175,33 @@ fn play_sine440hz(
     }
 }
 
-async fn play_sine440hz_circular(
+async fn play_sine440hz_async(
     speaker_tx: &mut SpeakerTxType,
-    tx_buffer: &mut [u8; 32000],
     duration: Duration,
 ) {
+    let mut buf_a = [0u8; 32000];
+    let mut buf_b = [0u8; 32000];
+
     let mut phase = 0.0f32;
     let sample_rate = SPEAKER_SAMPLE_RATE as f32;
     let freq = 440.0;
 
-    fill_sine(tx_buffer, &mut phase, freq, sample_rate);
-
-    let ptr = tx_buffer.as_mut_ptr();
-    let len = tx_buffer.len();
-
-    let mut transfer =
-        speaker_tx.write_dma_circular(tx_buffer).unwrap();
-
-    let first =
-        unsafe { core::slice::from_raw_parts_mut(ptr, len / 2) };
-    let second = unsafe {
-        core::slice::from_raw_parts_mut(ptr.add(len / 2), len / 2)
-    };
-
     let start = Instant::now();
 
+    fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
+
+    let mut current = &mut buf_a;
+    let mut next = &mut buf_b;
+
     while start.elapsed() < duration {
-        fill_sine(first, &mut phase, freq, sample_rate);
-        embassy_time::Timer::after_millis(90).await;
+        let fut = speaker_tx.write_dma_async(current);
 
-        fill_sine(second, &mut phase, freq, sample_rate);
-        embassy_time::Timer::after_millis(90).await;
+        fill_sine(next, &mut phase, freq, sample_rate);
+
+        fut.await.unwrap();
+
+        core::mem::swap(&mut current, &mut next);
     }
-
-    drop(transfer);
 }
 
 fn fill_sine(
