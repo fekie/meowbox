@@ -51,7 +51,7 @@ pub enum SpeakerCommand {
 pub(super) type SpeakerType = I2s<'static, Async>;
 type SpeakerTxType = I2sTx<'static, Async>;
 
-pub const SPEAKER_SAMPLE_RATE: u32 = 44_100;
+pub const SPEAKER_SAMPLE_RATE: u32 = 48_000;
 
 // From my understanding, this involves the memory that we write to
 // that the i2s speaker directly reads from. So basically we are
@@ -91,7 +91,7 @@ pub(super) fn init(
         // with no padding. from my understanding of i2s, the
         // data line alternates between the left and
         // right channel.
-        .with_data_format(DataFormat::Data16Channel16)
+        .with_data_format(DataFormat::Data32Channel32)
         .with_tx_config(Default::default());
 
     // create I2S.
@@ -129,7 +129,11 @@ pub async fn speaker_task(speaker: SpeakerType) {
         // command as normal.
         match cmd {
             SpeakerCommand::Sine440Hz(duration) => {
-                play_sine440hz_async(&mut speaker_tx, duration).await;
+                play_sine440hz_async(
+                    &mut speaker_tx,
+                    Duration::from_secs(1),
+                )
+                .await;
             }
         }
     }
@@ -165,7 +169,7 @@ fn play_sine440hz(
         }
 
         // send to I2S
-        //let _ = speaker_tx.write_dma(buffer).unwrap();
+        let _ = speaker_tx.write_dma(buffer).unwrap();
 
         // The sound will likely last longer a btt longer than the
         // duration, as the i2s is reading directly from
