@@ -1,5 +1,6 @@
 use core::f32::consts::PI;
 
+use defmt::warn;
 use embassy_executor::SendSpawner;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
@@ -51,7 +52,7 @@ pub enum SpeakerCommand {
 pub(super) type SpeakerType = I2s<'static, Async>;
 type SpeakerTxType = I2sTx<'static, Async>;
 
-pub const SPEAKER_SAMPLE_RATE: u32 = 48_000;
+pub const SPEAKER_SAMPLE_RATE: u32 = 44_100;
 
 // From my understanding, this involves the memory that we write to
 // that the i2s speaker directly reads from. So basically we are
@@ -121,21 +122,17 @@ pub async fn speaker_task(speaker: SpeakerType) {
     let mut speaker_tx: SpeakerTxType =
         speaker.i2s_tx.build(descriptors);
 
-    loop {
-        let cmd = SPEAKER_CHANNEL.receive().await;
+    //loop {
+    let cmd = SPEAKER_CHANNEL.receive().await;
 
-        // do a check to see if the command was to switch operating
-        // modes (which requires ownership). Otherwise, execute the
-        // command as normal.
-        match cmd {
-            SpeakerCommand::Sine440Hz(duration) => {
-                play_sine440hz_async(
-                    &mut speaker_tx,
-                    Duration::from_secs(1),
-                )
+    // do a check to see if the command was to switch operating
+    // modes (which requires ownership). Otherwise, execute the
+    // command as normal.
+    match cmd {
+        SpeakerCommand::Sine440Hz(duration) => {
+            play_sine440hz_async(speaker_tx, Duration::from_secs(10))
                 .await;
-            }
-        }
+        } // }
     }
 }
 
@@ -169,7 +166,9 @@ fn play_sine440hz(
         }
 
         // send to I2S
-        let _ = speaker_tx.write_dma(buffer).unwrap();
+        let foo = speaker_tx.write_dma(buffer).unwrap();
+
+        let _ = foo.wait();
 
         // The sound will likely last longer a btt longer than the
         // duration, as the i2s is reading directly from
@@ -181,15 +180,12 @@ fn play_sine440hz(
 }
 
 async fn play_sine440hz_async(
-    speaker_tx: &mut SpeakerTxType,
+    speaker_tx: SpeakerTxType,
     duration: Duration,
 ) {
     const BUF_SIZE: usize = 512;
-    const FADE_SAMPLES: usize = 32;
 
     let mut buf_a = [0u8; BUF_SIZE];
-    let mut buf_b = [0u8; BUF_SIZE];
-    let mut buf_c = [0u8; BUF_SIZE];
 
     let mut phase = 0.0f32;
     let sample_rate = SPEAKER_SAMPLE_RATE as f32;
@@ -197,26 +193,37 @@ async fn play_sine440hz_async(
 
     let start = Instant::now();
 
-    fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
-    fill_sine(&mut buf_b, &mut phase, freq, sample_rate);
-    fill_sine(&mut buf_c, &mut phase, freq, sample_rate);
+    //fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
 
-    let mut current: &mut [u8] = &mut buf_a;
-    let mut next: &mut [u8] = &mut buf_b;
-    let mut fill: &mut [u8] = &mut buf_c;
+    let mut ring_buffer = [0u8; 2048];
+
+    let mut transfer = speaker_tx
+        .write_dma_circular_async(&mut ring_buffer)
+        .unwrap();
+
+    let mut i = 0;
 
     while start.elapsed() < duration {
-        let transfer = speaker_tx.write_dma_async(current);
-
         // fill next buffer
-        fill_sine(fill, &mut phase, freq, sample_rate);
+        fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
+
+        let bytes_available_count =
+            transfer.available().await.unwrap_or_default();
+
+        let end_index = i + bytes_available_count % (buf_a.len() + 1);
+
+        if let Err(e) = transfer.push(&buf_a[i..end_index]).await {
+            warn!("speaker error");
+        }
+
+        i += bytes_available_count;
 
         //apply_fade_edges(fill, FADE_SAMPLES);
 
-        transfer.await.unwrap();
+        //transfer.unwrap();
 
-        core::mem::swap(&mut current, &mut next);
-        core::mem::swap(&mut next, &mut fill);
+        //core::mem::swap(&mut current, &mut next);
+        // core::mem::swap(&mut next, &mut fill);
     }
 }
 
