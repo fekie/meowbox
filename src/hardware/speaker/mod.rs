@@ -115,8 +115,8 @@ pub async fn speaker_task(speaker: SpeakerType) {
     // TODO: clean up all of this cause like, what the hell
     // initialize static cell buffers
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
-    let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) =
-        esp_hal::dma_buffers!(4096, 4096);
+    // let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) =
+    //     esp_hal::dma_buffers!(4096, 4096);
     //let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
 
     let mut speaker_tx: SpeakerTxType =
@@ -183,7 +183,7 @@ async fn play_sine440hz_async(
     speaker_tx: SpeakerTxType,
     duration: Duration,
 ) {
-    const BUF_SIZE: usize = 512;
+    const BUF_SIZE: usize = 2048;
 
     let mut buf_a = [0u8; BUF_SIZE];
 
@@ -195,7 +195,7 @@ async fn play_sine440hz_async(
 
     //fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
 
-    let mut ring_buffer = [0u8; 2048];
+    let mut ring_buffer = [0u8; 16384];
 
     let mut transfer = speaker_tx
         .write_dma_circular_async(&mut ring_buffer)
@@ -211,7 +211,7 @@ async fn play_sine440hz_async(
             .available()
             .await
             .unwrap_or_default()
-            .clamp(0, 512);
+            .clamp(0, 2048);
 
         let mut end_index = i + bytes_available_count;
 
