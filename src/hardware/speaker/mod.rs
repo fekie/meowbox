@@ -1,5 +1,6 @@
 use core::f32::consts::PI;
 
+use embassy_executor::SendSpawner;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
@@ -128,7 +129,7 @@ pub async fn speaker_task(speaker: SpeakerType) {
         // command as normal.
         match cmd {
             SpeakerCommand::Sine440Hz(duration) => {
-                play_sine440hz(&mut speaker_tx, tx_buffer, duration);
+                play_sine440hz_async(&mut speaker_tx, duration).await;
             }
         }
     }
@@ -179,8 +180,12 @@ async fn play_sine440hz_async(
     speaker_tx: &mut SpeakerTxType,
     duration: Duration,
 ) {
-    let mut buf_a = [0u8; 32000];
-    let mut buf_b = [0u8; 32000];
+    const BUF_SIZE: usize = 512;
+    const FADE_SAMPLES: usize = 32;
+
+    let mut buf_a = [0u8; BUF_SIZE];
+    let mut buf_b = [0u8; BUF_SIZE];
+    let mut buf_c = [0u8; BUF_SIZE];
 
     let mut phase = 0.0f32;
     let sample_rate = SPEAKER_SAMPLE_RATE as f32;
@@ -189,18 +194,25 @@ async fn play_sine440hz_async(
     let start = Instant::now();
 
     fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
+    fill_sine(&mut buf_b, &mut phase, freq, sample_rate);
+    fill_sine(&mut buf_c, &mut phase, freq, sample_rate);
 
-    let mut current = &mut buf_a;
-    let mut next = &mut buf_b;
+    let mut current: &mut [u8] = &mut buf_a;
+    let mut next: &mut [u8] = &mut buf_b;
+    let mut fill: &mut [u8] = &mut buf_c;
 
     while start.elapsed() < duration {
-        let fut = speaker_tx.write_dma_async(current);
+        let transfer = speaker_tx.write_dma_async(current);
 
-        fill_sine(next, &mut phase, freq, sample_rate);
+        // fill next buffer
+        fill_sine(fill, &mut phase, freq, sample_rate);
 
-        fut.await.unwrap();
+        //apply_fade_edges(fill, FADE_SAMPLES);
+
+        transfer.await.unwrap();
 
         core::mem::swap(&mut current, &mut next);
+        core::mem::swap(&mut next, &mut fill);
     }
 }
 
@@ -222,5 +234,25 @@ fn fill_sine(
         if *phase > 2.0 * PI {
             *phase -= 2.0 * PI;
         }
+    }
+}
+
+fn apply_fade_edges(buffer: &mut [u8], fade_samples: usize) {
+    let samples = buffer.len() / 4;
+
+    for i in 0..fade_samples {
+        let gain = i as f32 / fade_samples as f32;
+
+        let idx = i * 4;
+
+        let sample =
+            i16::from_le_bytes([buffer[idx], buffer[idx + 1]]);
+        let scaled = (sample as f32 * gain) as i16;
+
+        let bytes = scaled.to_le_bytes();
+        buffer[idx] = bytes[0];
+        buffer[idx + 1] = bytes[1];
+        buffer[idx + 2] = bytes[0];
+        buffer[idx + 3] = bytes[1];
     }
 }
