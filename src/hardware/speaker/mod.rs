@@ -1,6 +1,6 @@
 use core::f32::consts::PI;
 
-use defmt::warn;
+use defmt::{info, println, warn};
 use embassy_executor::SendSpawner;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
@@ -207,16 +207,31 @@ async fn play_sine440hz_async(
         // fill next buffer
         fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
 
-        let bytes_available_count =
-            transfer.available().await.unwrap_or_default();
+        let bytes_available_count = transfer
+            .available()
+            .await
+            .unwrap_or_default()
+            .clamp(0, 512);
 
-        let end_index = i + bytes_available_count % (buf_a.len() + 1);
+        let mut end_index = i + bytes_available_count;
+
+        if end_index > buf_a.len() {
+            end_index = buf_a.len()
+        }
+
+        println!("{}..{}", i, end_index);
+        println!("bytes available = {}", bytes_available_count);
 
         if let Err(e) = transfer.push(&buf_a[i..end_index]).await {
+            println!("{}", e);
             warn!("speaker error");
         }
 
         i += bytes_available_count;
+
+        if i >= buf_a.len() {
+            i = 0;
+        }
 
         //apply_fade_edges(fill, FADE_SAMPLES);
 
@@ -225,6 +240,8 @@ async fn play_sine440hz_async(
         //core::mem::swap(&mut current, &mut next);
         // core::mem::swap(&mut next, &mut fill);
     }
+
+    info!("fuck");
 }
 
 fn fill_sine(
