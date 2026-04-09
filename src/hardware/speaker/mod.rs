@@ -91,7 +91,7 @@ pub(super) fn init(
         // with no padding. from my understanding of i2s, the
         // data line alternates between the left and
         // right channel.
-        .with_data_format(DataFormat::Data32Channel32)
+        .with_data_format(DataFormat::Data16Channel16)
         .with_tx_config(Default::default());
 
     // create I2S.
@@ -115,7 +115,7 @@ pub async fn speaker_task(speaker: SpeakerType) {
     // initialize static cell buffers
     let descriptors = DESCRIPTORS.init([DmaDescriptor::EMPTY; 8]);
     let (rx_buffer, rx_descriptors, tx_buffer, tx_descriptors) =
-        esp_hal::dma_buffers!(32000, 32000);
+        esp_hal::dma_buffers!(4096, 4096);
     //let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
 
     let mut speaker_tx: SpeakerTxType =
@@ -228,14 +228,18 @@ fn fill_sine(
 ) {
     for chunk in buffer.chunks_exact_mut(4) {
         let sample = (phase.sin() * 8000.0) as i16;
+        let s = sample.to_le_bytes();
 
-        chunk[0] = sample as u8;
-        chunk[1] = (sample >> 8) as u8;
-        chunk[2] = sample as u8;
-        chunk[3] = (sample >> 8) as u8;
+        // LEFT channel
+        chunk[0] = s[0];
+        chunk[1] = s[1];
+
+        // RIGHT channel (silence)
+        chunk[2] = 0;
+        chunk[3] = 0;
 
         *phase += 2.0 * PI * freq / sample_rate;
-        if *phase > 2.0 * PI {
+        if *phase >= 2.0 * PI {
             *phase -= 2.0 * PI;
         }
     }

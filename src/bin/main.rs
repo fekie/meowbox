@@ -54,7 +54,7 @@ static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     let config =
-        esp_hal::Config::default().with_cpu_clock(CpuClock::_80MHz);
+        esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
     let non_mutex_peripherals =
