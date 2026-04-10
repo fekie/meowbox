@@ -205,7 +205,7 @@ async fn play_sine440hz_async(
 
     while start.elapsed() < duration {
         // fill next buffer
-        fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
+        // fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
 
         let bytes_available_count = transfer
             .available()
@@ -221,6 +221,17 @@ async fn play_sine440hz_async(
 
         println!("{}..{}", i, end_index);
         println!("bytes available = {}", bytes_available_count);
+
+        if bytes_available_count == 0 {
+            continue;
+        }
+
+        fill_sine(
+            &mut buf_a[i..end_index],
+            &mut phase,
+            freq,
+            sample_rate,
+        );
 
         if let Err(e) = transfer.push(&buf_a[i..end_index]).await {
             println!("{}", e);
