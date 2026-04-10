@@ -183,7 +183,7 @@ async fn play_sine440hz_async(
     speaker_tx: SpeakerTxType,
     duration: Duration,
 ) {
-    const BUF_SIZE: usize = 2048;
+    const BUF_SIZE: usize = 16384;
 
     let mut buf_a = [0u8; BUF_SIZE];
 
@@ -211,7 +211,7 @@ async fn play_sine440hz_async(
             .available()
             .await
             .unwrap_or_default()
-            .clamp(0, 2048);
+            .clamp(0, BUF_SIZE);
 
         let mut end_index = i + bytes_available_count;
 
