@@ -52,6 +52,9 @@ pub enum BuzzerSequence {
     Intermittent5ms2000ms,
 }
 
+//pub static DEBOUNCE_ACTIVE_LEFT: AtomicBool =
+// AtomicBool::new(false);
+
 #[task]
 pub async fn left_button_event(
     button: &'static hardware::ButtonType,
@@ -65,14 +68,21 @@ pub async fn left_button_event(
         info!("left button triggered");
 
         // wait 200ms
-        for _ in 0..20 {
-            buzzer.lock().await.as_mut().unwrap().toggle();
-            Timer::after(Duration::from_millis(10)).await;
-        }
+        // for _ in 0..20 {
+        //     buzzer.lock().await.as_mut().unwrap().toggle();
+        //     Timer::after(Duration::from_millis(10)).await;
+        // }
+
+        buzzer.lock().await.as_mut().unwrap().set_high();
+
+        Timer::after(Duration::from_micros(500)).await;
 
         //Timer::after(Duration::from_millis(200)).await;
         buzzer.lock().await.as_mut().unwrap().set_low();
         led.lock().await.as_mut().unwrap().set_high();
+
+        // debounce
+        Timer::after(Duration::from_secs(1)).await;
     }
 }
 
