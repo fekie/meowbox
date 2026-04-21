@@ -4,7 +4,7 @@ use esp_hal::{
         Ledc, LowSpeed,
         timer::{self, TimerIFace},
     },
-    peripherals::{GPIO48, LEDC, RMT},
+    peripherals::{GPIO38, GPIO48, LEDC, RMT},
     rmt::{PulseCode, Rmt},
     time::Rate,
 };
@@ -22,10 +22,10 @@ static RMT_BUFFER: StaticCell<
     [PulseCode; buffer_size(RMT_BUFFER_SIZE)],
 > = StaticCell::new();
 
-pub(super) fn init<'a>(
+pub fn init<'a>(
     ledc: LEDC<'a>,
     rmt: RMT<'a>,
-    gpio48: GPIO48<'a>,
+    gpio48: GPIO38<'a>,
     output_config_default: esp_hal::gpio::OutputConfig,
 ) -> SmartLedsAdapter<'a, SMART_LEDS_ADAPTER_BUFFER_SIZE> {
     let ledc_t = Ledc::new(ledc);

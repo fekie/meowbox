@@ -86,7 +86,7 @@ pub struct NonMutexPeripherals {
     pub right_rotary_b: Input<'static>,
     pub flash: FLASH<'static>,
     // it has a buffer size of one because there is only one neopixel
-    pub neopixel: SmartLedsAdapter<'static, 25>,
+    //pub neopixel: SmartLedsAdapter<'static, 25>,
     pub i2s_speaker: I2s<'static, esp_hal::Async>,
 }
 
@@ -199,12 +199,12 @@ pub async fn init_peripherals(
 
     let flash = peripherals.FLASH;
 
-    let neopixel = neopixel::init(
-        peripherals.LEDC,
-        peripherals.RMT,
-        peripherals.GPIO48,
-        output_config_default,
-    );
+    // let neopixel = neopixel::init(
+    //     peripherals.LEDC,
+    //     peripherals.RMT,
+    //     peripherals.GPIO48,
+    //     output_config_default,
+    // );
 
     let i2s_speaker = speaker::init(
         peripherals.I2S0,
@@ -224,7 +224,7 @@ pub async fn init_peripherals(
         right_rotary_a,
         right_rotary_b,
         flash, //simple_speaker,
-        neopixel,
+        //neopixel,
         i2s_speaker,
     }
 }

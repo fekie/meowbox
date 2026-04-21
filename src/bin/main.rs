@@ -13,7 +13,10 @@ use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use embedded_storage::{ReadStorage, Storage};
-use esp_hal::{clock::CpuClock, dma::DmaDescriptor, rng::Rng};
+use esp_hal::{
+    clock::CpuClock, dma::DmaDescriptor, gpio::OutputConfig,
+    rng::Rng, timer::timg::TimerGroup,
+};
 use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
@@ -23,6 +26,7 @@ use meowbox::{
         mono_display::{
             MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
         },
+        neopixel,
     },
     states::{MenuState, Meowbox, Stage, State},
     tasks::{
@@ -53,6 +57,11 @@ static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
+    //standard_startup(spawner).await;
+    power_test_startup(spawner).await;
+}
+
+async fn standard_startup(spawner: Spawner) -> ! {
     let config =
         esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
@@ -146,9 +155,9 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_b,
     ));
 
-    let _ = spawner.spawn(neopixel_command_listener(
-        non_mutex_peripherals.neopixel,
-    ));
+    // let _ = spawner.spawn(neopixel_command_listener(
+    //     non_mutex_peripherals.neopixel,
+    // ));
 
     // TODO: spawn this task
     let _ = spawner.spawn(display_task(mono_display));
@@ -307,5 +316,38 @@ async fn main(spawner: Spawner) -> ! {
         //non_mutex_peripherals.simple_speaker.toggle();
 
         Timer::after(Duration::from_millis(1)).await;
+    }
+}
+
+async fn power_test_startup(spawner: Spawner) -> ! {
+    let config =
+        esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+    let peripherals = esp_hal::init(config);
+
+    let timg0 = TimerGroup::new(peripherals.TIMG0);
+    esp_rtos::start(timg0.timer0);
+
+    Timer::after(Duration::from_millis(500)).await;
+
+    let output_config_default = OutputConfig::default();
+
+    let neopixel = neopixel::init(
+        peripherals.LEDC,
+        peripherals.RMT,
+        peripherals.GPIO38,
+        output_config_default,
+    );
+
+    let _ = spawner.spawn(neopixel_command_listener(neopixel));
+
+    let neopixel_handle = NeoPixelHandle::new();
+    neopixel_handle.activate_with_hb(235, 100).await;
+
+    println!("aaaaa");
+
+    loop {
+        neopixel_handle.increment_neopixel_hue(10).await;
+        println!("bbbbbb");
+        Timer::after(Duration::from_millis(50)).await;
     }
 }
