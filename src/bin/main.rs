@@ -341,7 +341,7 @@ async fn power_test_startup(spawner: Spawner) -> ! {
     let _ = spawner.spawn(neopixel_command_listener(neopixel));
 
     let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 100).await;
+    neopixel_handle.activate_with_hb(235, 30).await;
 
     println!("aaaaa");
 
