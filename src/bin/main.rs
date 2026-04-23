@@ -95,8 +95,8 @@ async fn main(spawner: Spawner) -> ! {
         meow[0], meow[1], meow[2], meow[3], meow[4]
     );
 
-    let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 30).await;
+    //let neopixel_handle = NeoPixelHandle::new();
+    //neopixel_handle.activate_with_hb(235, 30).await;
 
     println!("aaaaa");
 
@@ -175,26 +175,36 @@ async fn main(spawner: Spawner) -> ! {
 
     //let output_config_default = OutputConfig::default();
 
-    let mut red_led =
-        non_mutex_peripherals.shifter.get_pin_mut(0, 2, true);
-
     let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 5).await;
+    neopixel_handle.activate_with_hb(0, 5).await;
 
     loop {
-        neopixel_handle.increment_neopixel_hue(10).await;
+        neopixel_handle.activate_with_hb(0, 5).await;
+
+        //neopixel_handle.increment_neopixel_hue(10).await;
         //println!("bbbbbb");
         //Timer::after(Duration::from_millis(10)).await;
 
-        let _ = red_led.set_high();
+        // let _ = red_led.set_high();
+        // let _ = dpad_bot_led.set_high();
+
+        // let _ = left_big_button_led.set_low();
+        // let _ = right_big_button_led.set_low();
+
         //non_mutex_peripherals.shifter.update_shifters();
 
         //let _ = pin0.set_high();
         //non_mutex_peripherals.shifter.update_shifters();
 
         Timer::after(Duration::from_millis(500)).await;
-        let _ = red_led.set_low();
-        //non_mutex_peripherals.shifter.update_shifters();
+
+        neopixel_handle.activate_with_hb(0, 0).await;
+        // let _ = red_led.set_low();
+        // let _ = dpad_bot_led.set_low();
+        // //non_mutex_peripherals.shifter.update_shifters();
+
+        // let _ = left_big_button_led.set_high();
+        // let _ = right_big_button_led.set_high();
 
         Timer::after(Duration::from_millis(500)).await;
     }

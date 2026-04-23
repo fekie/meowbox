@@ -28,6 +28,7 @@ use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
+pub mod led_shifter;
 pub mod leds;
 pub mod mono_display;
 pub mod neopixel;
@@ -79,6 +80,9 @@ pub type MonoDisplayType =
 static BAR: static_cell::StaticCell<MonoDisplayType> =
     static_cell::StaticCell::new();
 
+pub type LedShifterType =
+    adv_shift_registers::AdvancedShiftRegister<2, Output<'static>>;
+
 pub struct NonMutexPeripherals {
     //pub display: mono_display::DisplayType,
     pub left_rotary_a: Input<'static>,
@@ -89,10 +93,7 @@ pub struct NonMutexPeripherals {
     // it has a buffer size of one because there is only one neopixel
     pub neopixel: SmartLedsAdapter<'static, 25>,
     //pub i2s_speaker: I2s<'static, esp_hal::Async>,
-    pub shifter: adv_shift_registers::AdvancedShiftRegister<
-        2,
-        Output<'static>,
-    >,
+    pub shifter: LedShifterType,
 }
 
 /// Initializes peripherals and assigns them to their respective
