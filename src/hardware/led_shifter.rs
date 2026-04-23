@@ -150,13 +150,13 @@ pub async fn led_shifter_listener(mut led_shifter: LedShifterType) {
         },
     ];
 
-    // be sure to initialize everyhting to false
-    // TODO
+    // initialize all to low
+    execute_command(&mut led_array, LedCommand::SetAllLow);
 
     loop {
         let cmd = LED_SHIFTER_CHANNEL.receive().await;
 
-        println!("but it gets the cmd");
+        //println!("but it gets the cmd");
 
         execute_command(&mut led_array, cmd);
     }

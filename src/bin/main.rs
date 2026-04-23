@@ -64,6 +64,9 @@ static DESCRIPTORS: StaticCell<[DmaDescriptor; 8]> =
     StaticCell::new();
 static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
+// RUNTIME VARIABLES
+const PLAY_STARTUP_SOUND: bool = false;
+
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     let config =
@@ -174,6 +177,9 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner
         .spawn(led_shifter_listener(non_mutex_peripherals.shifter));
 
+    // DO NOT REMOVE
+    safety_startup().await;
+
     // TODO: spawn this task
     //let _ = spawner.spawn(display_task(mono_display));
 
@@ -185,46 +191,47 @@ async fn main(spawner: Spawner) -> ! {
     let neopixel_handle = NeoPixelHandle::new();
     neopixel_handle.activate_with_hb(0, 5).await;
 
-    println!("whar");
+    // mandatory 10 second wait, so that the board can still be
+    // flashed if something power hungry is being done
 
-    loop {
-        neopixel_handle.activate_with_hb(0, 5).await;
+    // loop {
+    //     neopixel_handle.activate_with_hb(0, 5).await;
 
-        //neopixel_handle.increment_neopixel_hue(10).await;
-        //println!("bbbbbb");
-        //Timer::after(Duration::from_millis(10)).await;
+    //     //neopixel_handle.increment_neopixel_hue(10).await;
+    //     //println!("bbbbbb");
+    //     //Timer::after(Duration::from_millis(10)).await;
 
-        // let _ = red_led.set_high();
-        // let _ = dpad_bot_led.set_high();
+    //     // let _ = red_led.set_high();
+    //     // let _ = dpad_bot_led.set_high();
 
-        // let _ = left_big_button_led.set_low();
-        // let _ = right_big_button_led.set_low();
+    //     // let _ = left_big_button_led.set_low();
+    //     // let _ = right_big_button_led.set_low();
 
-        //non_mutex_peripherals.shifter.update_shifters();
+    //     //non_mutex_peripherals.shifter.update_shifters();
 
-        //let _ = pin0.set_high();
-        //non_mutex_peripherals.shifter.update_shifters();
+    //     //let _ = pin0.set_high();
+    //     //non_mutex_peripherals.shifter.update_shifters();
 
-        LED_SHIFTER_CHANNEL
-            .send(LedCommand::Toggle(LED::AmberLeft))
-            .await;
+    //     // LED_SHIFTER_CHANNEL
+    //     //     .send(LedCommand::Toggle(LED::AmberLeft))
+    //     //     .await;
 
-        Timer::after(Duration::from_millis(500)).await;
+    //     Timer::after(Duration::from_millis(500)).await;
 
-        // LED_SHIFTER_CHANNEL
-        //     .send(LedCommand::Toggle(LED::AmberLeft))
-        //     .await;
+    //     // LED_SHIFTER_CHANNEL
+    //     //     .send(LedCommand::Toggle(LED::AmberLeft))
+    //     //     .await;
 
-        neopixel_handle.activate_with_hb(0, 0).await;
-        // let _ = red_led.set_low();
-        // let _ = dpad_bot_led.set_low();
-        // //non_mutex_peripherals.shifter.update_shifters();
+    //     //neopixel_handle.activate_with_hb(0, 0).await;
+    //     // let _ = red_led.set_low();
+    //     // let _ = dpad_bot_led.set_low();
+    //     // //non_mutex_peripherals.shifter.update_shifters();
 
-        // let _ = left_big_button_led.set_high();
-        // let _ = right_big_button_led.set_high();
+    //     // let _ = left_big_button_led.set_high();
+    //     // let _ = right_big_button_led.set_high();
 
-        Timer::after(Duration::from_millis(500)).await;
-    }
+    //     Timer::after(Duration::from_millis(500)).await;
+    // }
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
@@ -375,6 +382,51 @@ async fn main(spawner: Spawner) -> ! {
 
         Timer::after(Duration::from_millis(1)).await;
     }
+}
+
+/// ALWAYS, UNDER LITERALLY EVERY CIRCUMSTANCE, CALL THIS.
+/// OTHERWISE, THE BOARD COULD BE BRICKED.
+async fn safety_startup() {
+    // start the two buttons on high
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::SetHigh(LED::ButtonLeft))
+        .await;
+
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::SetHigh(LED::ButtonRight))
+        .await;
+
+    const SECONDS: u64 = 10;
+    const INTERVAL_MILLIS: u64 = 250;
+
+    let cycles = (SECONDS * 1000) / 250;
+
+    // lasts for 10 seconds.
+    for _ in 0..cycles {
+        Timer::after_millis(INTERVAL_MILLIS).await;
+
+        toggle_reds().await;
+    }
+
+    LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
+
+    if PLAY_STARTUP_SOUND {
+        println!("need to implement startup sound");
+        panic!()
+    }
+}
+
+async fn toggle_reds() {
+    LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(LED::Red)).await;
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::Toggle(LED::DpadBottom))
+        .await;
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::Toggle(LED::ButtonLeft))
+        .await;
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::Toggle(LED::ButtonRight))
+        .await;
 }
 
 // async fn standard_startup(spawner: Spawner) -> ! {
