@@ -28,6 +28,10 @@ use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{
         self,
+        led_shifter::{
+            self, LED, LED_SHIFTER_CHANNEL, LedCommand,
+            led_shifter_listener,
+        },
         mono_display::{
             MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
         },
@@ -167,6 +171,9 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.neopixel,
     ));
 
+    let _ = spawner
+        .spawn(led_shifter_listener(non_mutex_peripherals.shifter));
+
     // TODO: spawn this task
     //let _ = spawner.spawn(display_task(mono_display));
 
@@ -177,6 +184,8 @@ async fn main(spawner: Spawner) -> ! {
 
     let neopixel_handle = NeoPixelHandle::new();
     neopixel_handle.activate_with_hb(0, 5).await;
+
+    println!("whar");
 
     loop {
         neopixel_handle.activate_with_hb(0, 5).await;
@@ -196,7 +205,15 @@ async fn main(spawner: Spawner) -> ! {
         //let _ = pin0.set_high();
         //non_mutex_peripherals.shifter.update_shifters();
 
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::Toggle(LED::AmberLeft))
+            .await;
+
         Timer::after(Duration::from_millis(500)).await;
+
+        // LED_SHIFTER_CHANNEL
+        //     .send(LedCommand::Toggle(LED::AmberLeft))
+        //     .await;
 
         neopixel_handle.activate_with_hb(0, 0).await;
         // let _ = red_led.set_low();
