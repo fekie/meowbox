@@ -47,7 +47,8 @@ pub type ButtonLEDType =
 
 pub type BuzzerType =
     Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
-pub static BUZZER: BuzzerType = Mutex::new(None);
+pub static BUZZER_400: BuzzerType = Mutex::new(None);
+pub static BUZZER_2K3: BuzzerType = Mutex::new(None);
 
 pub type PBuzzerType =
     Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
@@ -118,7 +119,13 @@ pub async fn init_peripherals(
     //     output_config_default,
     // );
 
-    let buzzer = Output::new(
+    let buzzer_400 = Output::new(
+        peripherals.GPIO15,
+        Level::Low,
+        output_config_default,
+    );
+
+    let buzzer_2k3 = Output::new(
         peripherals.GPIO16,
         Level::Low,
         output_config_default,
@@ -170,7 +177,8 @@ pub async fn init_peripherals(
         *(LEFT_BUTTON.lock().await) = Some(left_button);
         //*(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
         //*(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
-        *(BUZZER.lock().await) = Some(buzzer);
+        *(BUZZER_400.lock().await) = Some(buzzer_400);
+        *(BUZZER_2K3.lock().await) = Some(buzzer_2k3);
         *(ROTARY_SWITCH_LEFT.lock().await) = Some(rotary_switch_left);
         *(ROTARY_SWITCH_RIGHT.lock().await) =
             Some(rotary_switch_right);

@@ -44,7 +44,7 @@ pub async fn rotary_switch_left_event(
 
         println!("wah");
 
-        Timer::after(Duration::from_millis(200)).await;
+        Timer::after(Duration::from_millis(100)).await;
 
         //buzzer.lock().await.as_mut().unwrap().set_high();
         //Timer::after(Duration::from_millis(200)).await;
@@ -57,7 +57,7 @@ pub async fn rotary_switch_left_event(
 #[task]
 pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
-    led: &'static hardware::ButtonLEDType,
+    buzzer: &'static hardware::BuzzerType,
 ) {
     let neopixel_handle = NeoPixelHandle::new();
 
@@ -74,9 +74,10 @@ pub async fn rotary_switch_right_event(
             .unwrap()
             .wait_for_falling_edge()
             .await;
-        led.lock().await.as_mut().unwrap().set_low();
 
-        neopixel_handle.cycle_all_hues(3).await;
+        buzzer.lock().await.as_mut().unwrap().set_high();
+
+        //neopixel_handle.cycle_all_hues(3).await;
 
         // play simple tone
         //BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);
@@ -92,12 +93,12 @@ pub async fn rotary_switch_right_event(
 
         // hue = hue.wrapping_add(10);
 
-        Timer::after(Duration::from_millis(200)).await;
+        Timer::after(Duration::from_millis(2000)).await;
 
         //buzzer.lock().await.as_mut().unwrap().set_high();
         //Timer::after(Duration::from_millis(200)).await;
         //buzzer.lock().await.as_mut().unwrap().set_low();
-        led.lock().await.as_mut().unwrap().set_high();
+        buzzer.lock().await.as_mut().unwrap().set_low();
     }
 }
 
@@ -106,7 +107,7 @@ pub async fn left_rotary_rotation_watcher(
     left_rotary_a: Input<'static>,
     left_rotary_b: Input<'static>,
 ) {
-    let mut light_ring = LightRing::new().await;
+    //let mut light_ring = LightRing::new().await;
 
     // start an encoder that we set the values of manually
 
@@ -123,15 +124,15 @@ pub async fn left_rotary_rotation_watcher(
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_high(); RED_LED.lock().await.
                 // as_mut().unwrap().set_low();
-                light_ring.forward().await;
-                menu_scroll_down();
+                //light_ring.forward().await;
+                //menu_scroll_down();
             }
             Direction::Anticlockwise => {
                 // RED_LED.lock().await.as_mut().unwrap().set_high();
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_low();
-                light_ring.backward().await;
-                menu_scroll_up();
+                //light_ring.backward().await;
+                //menu_scroll_up();
             }
             Direction::None => {}
         }

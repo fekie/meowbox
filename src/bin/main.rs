@@ -135,13 +135,13 @@ async fn main(spawner: Spawner) -> ! {
 
     let _ = spawner.spawn(rotary_switch_left_event(
         &hardware::ROTARY_SWITCH_LEFT,
-        &hardware::BUZZER,
+        &hardware::BUZZER_2K3,
     ));
 
-    // let _ = spawner.spawn(rotary_switch_right_event(
-    //     &hardware::ROTARY_SWITCH_RIGHT,
-    //     &hardware::RIGHT_BUTTON_LED,
-    // ));
+    let _ = spawner.spawn(rotary_switch_right_event(
+        &hardware::ROTARY_SWITCH_RIGHT,
+        &hardware::BUZZER_400,
+    ));
 
     //let _ = spawner.spawn(play_sequence_listener(&
     // hardware::BUZZER));
@@ -169,12 +169,12 @@ async fn main(spawner: Spawner) -> ! {
     //     .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
 
     let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 10).await;
+    neopixel_handle.activate_with_hb(235, 5).await;
 
     loop {
-        neopixel_handle.increment_neopixel_hue(10).await;
-        println!("bbbbbb");
-        Timer::after(Duration::from_millis(50)).await;
+        neopixel_handle.increment_neopixel_hue(1).await;
+        //println!("bbbbbb");
+        Timer::after(Duration::from_millis(10)).await;
     }
 
     // wait before and after initing display, or else it competes for
