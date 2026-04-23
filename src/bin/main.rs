@@ -175,8 +175,8 @@ async fn main(spawner: Spawner) -> ! {
 
     //let output_config_default = OutputConfig::default();
 
-    let mut pin0 =
-        non_mutex_peripherals.shifter.get_pin_mut(0, 0, true);
+    let mut red_led =
+        non_mutex_peripherals.shifter.get_pin_mut(0, 2, true);
 
     let neopixel_handle = NeoPixelHandle::new();
     neopixel_handle.activate_with_hb(235, 5).await;
@@ -186,15 +186,15 @@ async fn main(spawner: Spawner) -> ! {
         //println!("bbbbbb");
         //Timer::after(Duration::from_millis(10)).await;
 
-        let _ = pin0.set_high();
-        non_mutex_peripherals.shifter.update_shifters();
+        let _ = red_led.set_high();
+        //non_mutex_peripherals.shifter.update_shifters();
 
         //let _ = pin0.set_high();
         //non_mutex_peripherals.shifter.update_shifters();
 
         Timer::after(Duration::from_millis(500)).await;
-        let _ = pin0.set_low();
-        non_mutex_peripherals.shifter.update_shifters();
+        let _ = red_led.set_low();
+        //non_mutex_peripherals.shifter.update_shifters();
 
         Timer::after(Duration::from_millis(500)).await;
     }
