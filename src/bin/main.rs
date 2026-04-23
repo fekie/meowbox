@@ -8,14 +8,19 @@
 
 use core::f32::consts::PI;
 
+use adv_shift_registers;
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
+use embedded_hal::digital::OutputPin;
 use embedded_storage::{ReadStorage, Storage};
 use esp_hal::{
-    clock::CpuClock, dma::DmaDescriptor, gpio::OutputConfig,
-    rng::Rng, timer::timg::TimerGroup,
+    clock::CpuClock,
+    dma::DmaDescriptor,
+    gpio::{Input, InputConfig, Io, Level, Output, OutputConfig},
+    rng::Rng,
+    timer::timg::TimerGroup,
 };
 use esp_println as _;
 use esp_println::println;
@@ -61,7 +66,7 @@ async fn main(spawner: Spawner) -> ! {
         esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
-    let non_mutex_peripherals =
+    let mut non_mutex_peripherals =
         hardware::init_peripherals(peripherals).await;
 
     //panic!("DONT RUN THIS UNTIL THE DISPLAY ISNT INITIALIZED");
@@ -168,13 +173,30 @@ async fn main(spawner: Spawner) -> ! {
     // let _ = spawner
     //     .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
 
+    //let output_config_default = OutputConfig::default();
+
+    let mut pin0 =
+        non_mutex_peripherals.shifter.get_pin_mut(0, 0, true);
+
     let neopixel_handle = NeoPixelHandle::new();
     neopixel_handle.activate_with_hb(235, 5).await;
 
     loop {
-        neopixel_handle.increment_neopixel_hue(1).await;
+        neopixel_handle.increment_neopixel_hue(10).await;
         //println!("bbbbbb");
-        Timer::after(Duration::from_millis(10)).await;
+        //Timer::after(Duration::from_millis(10)).await;
+
+        let _ = pin0.set_high();
+        non_mutex_peripherals.shifter.update_shifters();
+
+        //let _ = pin0.set_high();
+        //non_mutex_peripherals.shifter.update_shifters();
+
+        Timer::after(Duration::from_millis(500)).await;
+        let _ = pin0.set_low();
+        non_mutex_peripherals.shifter.update_shifters();
+
+        Timer::after(Duration::from_millis(500)).await;
     }
 
     // wait before and after initing display, or else it competes for

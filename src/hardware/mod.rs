@@ -89,6 +89,10 @@ pub struct NonMutexPeripherals {
     // it has a buffer size of one because there is only one neopixel
     pub neopixel: SmartLedsAdapter<'static, 25>,
     //pub i2s_speaker: I2s<'static, esp_hal::Async>,
+    pub shifter: adv_shift_registers::AdvancedShiftRegister<
+        2,
+        Output<'static>,
+    >,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -163,6 +167,31 @@ pub async fn init_peripherals(
     //     output_config_default,
     // );
 
+    let reg_rclk = Output::new(
+        peripherals.GPIO0,
+        Level::Low,
+        output_config_default,
+    );
+
+    let reg_ser = Output::new(
+        peripherals.GPIO1,
+        Level::Low,
+        output_config_default,
+    );
+
+    let reg_srclk = Output::new(
+        peripherals.GPIO2,
+        Level::Low,
+        output_config_default,
+    );
+
+    let shifter: adv_shift_registers::AdvancedShiftRegister<
+        2,
+        Output<'_>,
+    > = adv_shift_registers::AdvancedShiftRegister::new(
+        reg_ser, reg_srclk, reg_rclk, 0,
+    );
+
     let left_rotary_a = Input::new(peripherals.GPIO9, pull_up_config);
     let left_rotary_b =
         Input::new(peripherals.GPIO11, pull_up_config);
@@ -233,6 +262,6 @@ pub async fn init_peripherals(
         right_rotary_b,
         flash, //simple_speaker,
         neopixel,
-        //i2s_speaker,
+        shifter, //i2s_speaker,
     }
 }

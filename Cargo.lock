@@ -3,6 +3,16 @@
 version = 4
 
 [[package]]
+name = "adv-shift-registers"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "519bc9536b1d6a133dfc208cbf1a0e5ac6ccac1fe0c0ce5f44f5a43f85096bc8"
+dependencies = [
+ "embedded-hal 1.0.0",
+ "log",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1153,6 +1163,7 @@ checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 name = "meowbox"
 version = "0.1.0"
 dependencies = [
+ "adv-shift-registers",
  "critical-section",
  "defmt 1.0.1",
  "either",
@@ -1161,6 +1172,7 @@ dependencies = [
  "embassy-sync 0.7.2",
  "embassy-time",
  "embedded-graphics",
+ "embedded-hal 1.0.0",
  "embedded-storage",
  "esp-alloc",
  "esp-bootloader-esp-idf",
