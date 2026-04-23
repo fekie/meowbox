@@ -22,7 +22,7 @@ use esp_println::println;
 use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{
-        self, LEFT_BUTTON_LED, RED_LED, RIGHT_BUTTON_LED,
+        self,
         mono_display::{
             MONO_DISPLAY_CH, MonoDisplay, MonoDisplayCommand,
         },
@@ -57,17 +57,14 @@ static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
-    //standard_startup(spawner).await;
-    power_test_startup(spawner).await;
-}
-
-async fn standard_startup(spawner: Spawner) -> ! {
     let config =
         esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
     let non_mutex_peripherals =
         hardware::init_peripherals(peripherals).await;
+
+    //panic!("DONT RUN THIS UNTIL THE DISPLAY ISNT INITIALIZED");
 
     let flash_addr = 0x9000;
 
@@ -93,6 +90,11 @@ async fn standard_startup(spawner: Spawner) -> ! {
         meow[0], meow[1], meow[2], meow[3], meow[4]
     );
 
+    let neopixel_handle = NeoPixelHandle::new();
+    neopixel_handle.activate_with_hb(235, 30).await;
+
+    println!("aaaaa");
+
     // static mut DESCRIPTORS: [DmaDescriptor; 8] =
     //     [DmaDescriptor::EMPTY; 8];
     // static mut BUFFER: [u8; 2048] = [0; 2048];
@@ -115,35 +117,36 @@ async fn standard_startup(spawner: Spawner) -> ! {
 
     //let rng = Rng::new();
 
-    let mono_display =
-        MonoDisplay::Graphics(non_mutex_peripherals.display);
+    // let mono_display =
+    //     MonoDisplay::Graphics(non_mutex_peripherals.display);
 
     info!("Embassy initialized!");
 
-    let _ = spawner.spawn(right_button_event(
-        &hardware::RIGHT_BUTTON,
-        &hardware::RIGHT_BUTTON_LED,
-        &hardware::BUZZER,
-    ));
-    let _ = spawner.spawn(left_button_event(
-        &hardware::LEFT_BUTTON,
-        &hardware::LEFT_BUTTON_LED,
-        &hardware::BUZZER,
-    ));
+    // let _ = spawner.spawn(right_button_event(
+    //     &hardware::RIGHT_BUTTON,
+    //     &hardware::RIGHT_BUTTON_LED,
+    //     &hardware::BUZZER,
+    // ));
+    // let _ = spawner.spawn(left_button_event(
+    //     &hardware::LEFT_BUTTON,
+    //     &hardware::LEFT_BUTTON_LED,
+    //     &hardware::BUZZER,
+    // ));
 
     let _ = spawner.spawn(rotary_switch_left_event(
         &hardware::ROTARY_SWITCH_LEFT,
-        &hardware::LEFT_BUTTON_LED,
+        &hardware::BUZZER,
     ));
 
-    let _ = spawner.spawn(rotary_switch_right_event(
-        &hardware::ROTARY_SWITCH_RIGHT,
-        &hardware::RIGHT_BUTTON_LED,
-    ));
+    // let _ = spawner.spawn(rotary_switch_right_event(
+    //     &hardware::ROTARY_SWITCH_RIGHT,
+    //     &hardware::RIGHT_BUTTON_LED,
+    // ));
 
-    let _ = spawner.spawn(play_sequence_listener(&hardware::BUZZER));
+    //let _ = spawner.spawn(play_sequence_listener(&
+    // hardware::BUZZER));
 
-    let _ = spawner.spawn(led_rotation());
+    //let _ = spawner.spawn(led_rotation());
 
     let _ = spawner.spawn(right_rotary_rotation_watcher(
         non_mutex_peripherals.right_rotary_a,
@@ -155,24 +158,30 @@ async fn standard_startup(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_b,
     ));
 
-    // let _ = spawner.spawn(neopixel_command_listener(
-    //     non_mutex_peripherals.neopixel,
-    // ));
+    let _ = spawner.spawn(neopixel_command_listener(
+        non_mutex_peripherals.neopixel,
+    ));
 
     // TODO: spawn this task
-    let _ = spawner.spawn(display_task(mono_display));
+    //let _ = spawner.spawn(display_task(mono_display));
 
-    let _ = spawner
-        .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
+    // let _ = spawner
+    //     .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
 
     let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 30).await;
+    neopixel_handle.activate_with_hb(235, 10).await;
+
+    loop {
+        neopixel_handle.increment_neopixel_hue(10).await;
+        println!("bbbbbb");
+        Timer::after(Duration::from_millis(50)).await;
+    }
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
     Timer::after(Duration::from_millis(500)).await;
 
-    MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
+    //MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
 
     //display.init().await.expect("failed to initialize display");
     // loop {
@@ -192,8 +201,8 @@ async fn standard_startup(spawner: Spawner) -> ! {
     Timer::after(Duration::from_millis(500)).await;
 
     // after this, turn on button leds
-    LEFT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
-    RIGHT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
+    //LEFT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
+    //RIGHT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
 
     // let text_style = MonoTextStyleBuilder::new()
     //     .font(&FONT_6X10)
@@ -319,35 +328,295 @@ async fn standard_startup(spawner: Spawner) -> ! {
     }
 }
 
-async fn power_test_startup(spawner: Spawner) -> ! {
-    let config =
-        esp_hal::Config::default().with_cpu_clock(CpuClock::max());
-    let peripherals = esp_hal::init(config);
+// async fn standard_startup(spawner: Spawner) -> ! {
+//     let config =
+//         esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+//     let peripherals = esp_hal::init(config);
 
-    let timg0 = TimerGroup::new(peripherals.TIMG0);
-    esp_rtos::start(timg0.timer0);
+//     let non_mutex_peripherals =
+//         hardware::init_peripherals(peripherals).await;
 
-    Timer::after(Duration::from_millis(500)).await;
+//     let flash_addr = 0x9000;
 
-    let output_config_default = OutputConfig::default();
+//     let mut flash = FlashStorage::new(non_mutex_peripherals.flash);
 
-    let neopixel = neopixel::init(
-        peripherals.LEDC,
-        peripherals.RMT,
-        peripherals.GPIO38,
-        output_config_default,
-    );
+//     println!("Flash size = {}", flash.capacity());
 
-    let _ = spawner.spawn(neopixel_command_listener(neopixel));
+//     let foo = [4, 5, 6, 12, 13];
 
-    let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(235, 30).await;
+//     flash.write(flash_addr, &foo).unwrap();
 
-    println!("aaaaa");
+//     let mut meow = [0, 0, 0, 0, 0];
 
-    loop {
-        neopixel_handle.increment_neopixel_hue(10).await;
-        println!("bbbbbb");
-        Timer::after(Duration::from_millis(50)).await;
-    }
-}
+//     flash.read(flash_addr, &mut meow).unwrap();
+
+//     let foo2 = [7, 8, 9];
+
+//     flash.write(flash_addr, &foo2).unwrap();
+//     flash.read(flash_addr, &mut meow).unwrap();
+
+//     println!(
+//         "{} {} {} {} {}",
+//         meow[0], meow[1], meow[2], meow[3], meow[4]
+//     );
+
+//     // static mut DESCRIPTORS: [DmaDescriptor; 8] =
+//     //     [DmaDescriptor::EMPTY; 8];
+//     // static mut BUFFER: [u8; 2048] = [0; 2048];
+
+//     // let arena = &mut Arena::new();
+
+//     // // Add some new nodes to the arena
+//     // let a = arena.new_node(1);
+//     // let b = arena.new_node(2);
+
+//     // // Append b to a
+//     // a.append(b, arena);
+//     // assert_eq!(b.ancestors(arena).into_iter().count(), 2);
+
+//     // Enable the watchdog timer and feed it for the first time
+//     //non_mutex_peripherals.timg1.wdt.enable();
+//     //non_mutex_peripherals.timg1.wdt.feed();
+
+//     //let mut display = non_mutex_peripherals.display;
+
+//     //let rng = Rng::new();
+
+//     let mono_display =
+//         MonoDisplay::Graphics(non_mutex_peripherals.display);
+
+//     info!("Embassy initialized!");
+
+//     let _ = spawner.spawn(right_button_event(
+//         &hardware::RIGHT_BUTTON,
+//         &hardware::RIGHT_BUTTON_LED,
+//         &hardware::BUZZER,
+//     ));
+//     let _ = spawner.spawn(left_button_event(
+//         &hardware::LEFT_BUTTON,
+//         &hardware::LEFT_BUTTON_LED,
+//         &hardware::BUZZER,
+//     ));
+
+//     let _ = spawner.spawn(rotary_switch_left_event(
+//         &hardware::ROTARY_SWITCH_LEFT,
+//         &hardware::LEFT_BUTTON_LED,
+//     ));
+
+//     let _ = spawner.spawn(rotary_switch_right_event(
+//         &hardware::ROTARY_SWITCH_RIGHT,
+//         &hardware::RIGHT_BUTTON_LED,
+//     ));
+
+//     let _ =
+// spawner.spawn(play_sequence_listener(&hardware::BUZZER));
+
+//     let _ = spawner.spawn(led_rotation());
+
+//     let _ = spawner.spawn(right_rotary_rotation_watcher(
+//         non_mutex_peripherals.right_rotary_a,
+//         non_mutex_peripherals.right_rotary_b,
+//     ));
+
+//     let _ = spawner.spawn(left_rotary_rotation_watcher(
+//         non_mutex_peripherals.left_rotary_a,
+//         non_mutex_peripherals.left_rotary_b,
+//     ));
+
+//     // let _ = spawner.spawn(neopixel_command_listener(
+//     //     non_mutex_peripherals.neopixel,
+//     // ));
+
+//     // TODO: spawn this task
+//     let _ = spawner.spawn(display_task(mono_display));
+
+//     let _ = spawner
+//         .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
+
+//     let neopixel_handle = NeoPixelHandle::new();
+//     neopixel_handle.activate_with_hb(235, 30).await;
+
+//     // wait before and after initing display, or else it competes
+// for     // power and stuff will fail
+//     Timer::after(Duration::from_millis(500)).await;
+
+//     MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
+
+//     //display.init().await.expect("failed to initialize display");
+//     // loop {
+//     //     match display.init().await {
+//     //         Ok(_) => {
+//     //             info!("display initialized!");
+//     //             break;
+//     //         }
+//     //         Err(e) => {
+//     //             error!("display init failed");
+//     //             Timer::after(Duration::from_millis(200)).await;
+//     //         }
+//     //     }
+//     // }
+
+//     //info!("display initialized!");
+//     Timer::after(Duration::from_millis(500)).await;
+
+//     // after this, turn on button leds
+//     LEFT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
+//     RIGHT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
+
+//     // let text_style = MonoTextStyleBuilder::new()
+//     //     .font(&FONT_6X10)
+//     //     .text_color(BinaryColor::On)
+//     //     .build();
+
+//     // let mut particles: [physics::Particle; 5] = [
+//     //     physics::Particle::default(),
+//     //     physics::Particle::default(),
+//     //     physics::Particle::default(),
+//     //     physics::Particle::default(),
+//     //     physics::Particle::default(),
+//     // ];
+
+//     // particles[1].set_pos(10.0, 10.0);
+//     // particles[2].set_pos(20.0, 20.0);
+//     // particles[3].set_pos(30.0, 30.0);
+//     // particles[4].set_pos(127.0, 63.0);
+
+//     // display.flush().await.unwrap();
+
+//     // let mut angle: f32 = 0.0;
+
+//     // // We have a 128x64 screen, so we
+//     // // will do a 8x4 grid flow field, where
+//     // // each one has an angle (each has the same magnitude).
+//     // // This array will contain row 0 first, then row 1, etc
+//     // let mut flow_field: [f32; physics::FLOW_FIELD_SIZE] =
+//     //     [0.0; physics::FLOW_FIELD_SIZE];
+
+//     // let mut flow_field = physics::FlowField::new();
+
+//     // for (i, chunk) in flow_field.0.iter_mut().enumerate() {
+//     //     // a full rotation is 2pi, so we want to have each one
+//     //     // generate a bit more of a rotation than the last
+
+//     //     let y = i / SCREEN_WIDTH as usize;
+//     //     let x = i % SCREEN_WIDTH as usize;
+
+//     //     let perlin_angle =
+//     //         perlin_2d(x as f32 * 0.03, y as f32 * 0.03)
+//     //             .clamp(-1.0, 1.0)
+//     //             * 2.0
+//     //             * PI;
+
+//     //     *chunk = perlin_angle;
+//     // }
+
+//     //let state = State::LightRing(Stage::Setup,
+//     // LightRingState::White);
+
+//     let state = State::Menu(Stage::Setup, MenuState::default());
+
+//     // let state = State::FlowField(
+//     //     Stage::Setup,
+//     //     meowbox::states::FlowFieldState::Fast,
+//     // );
+
+//     //let menu_tree = menutree::MenuTree::new();
+
+//     let mut meowbox = Meowbox::new(state);
+//     // turn red led back on to compensate for menu turning it off
+
+//     // loop {
+//     //     for chunk in buffer.chunks_exact_mut(4) {
+//     //         let sample = (phase.sin() * 8000.0) as i16;
+
+//     //         // stereo
+//     //         chunk[0] = sample as u8;
+//     //         chunk[1] = (sample >> 8) as u8;
+//     //         chunk[2] = sample as u8;
+//     //         chunk[3] = (sample >> 8) as u8;
+
+//     //         phase += 2.0 * PI * freq / sample_rate;
+//     //         if phase > 2.0 * PI {
+//     //             phase -= 2.0 * PI;
+//     //         }
+//     //     }
+
+//     //     // send to I2S
+//     //     let _ = tx.write_dma(buffer).unwrap();
+//     // }
+
+//     loop {
+//         meowbox.tick().await;
+
+//         // TODO: run the routine here, and after each one finishes
+// it         // goes and checks what the next routine is needed to
+//         // run
+
+//         // if let Err(e) = display.clear(BinaryColor::Off) {
+//         //     info!("error on clear");
+//         // }
+
+//         // for (i, particle) in particles.iter_mut().enumerate() {
+//         //     if let Err(e) = Pixel(
+//         //         Point::new(particle.x() as i32, particle.y() as
+//         // i32),         BinaryColor::On,
+//         //     )
+//         //     .draw(&mut display)
+//         //     {
+//         //         info!("error on draw");
+//         //     }
+
+//         //     particle.update_velocity(&flow_field);
+//         //     particle.update_position();
+//         // }
+
+//         // if let Err(e) = display.flush().await {
+//         //     info!("error on flush");
+//         // }
+
+//         // // make the angle be able to swing plus or minus pi/2
+//         // angle += ((physics::random(&rng) - 0.5) * 2.0) * PI /
+// 2.0;
+
+//         // for chunk in &mut flow_field.0 {
+//         //     *chunk += angle;
+//         // }
+
+//         //non_mutex_peripherals.simple_speaker.toggle();
+
+//         Timer::after(Duration::from_millis(1)).await;
+//     }
+// }
+
+// async fn power_test_startup(spawner: Spawner) -> ! {
+//     let config =
+//         esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+//     let peripherals = esp_hal::init(config);
+
+//     let timg0 = TimerGroup::new(peripherals.TIMG0);
+//     esp_rtos::start(timg0.timer0);
+
+//     Timer::after(Duration::from_millis(500)).await;
+
+//     let output_config_default = OutputConfig::default();
+
+//     let neopixel = neopixel::init(
+//         peripherals.LEDC,
+//         peripherals.RMT,
+//         peripherals.GPIO38,
+//         output_config_default,
+//     );
+
+//     let _ = spawner.spawn(neopixel_command_listener(neopixel));
+
+//     let neopixel_handle = NeoPixelHandle::new();
+//     neopixel_handle.activate_with_hb(235, 30).await;
+
+//     println!("aaaaa");
+
+//     loop {
+//         neopixel_handle.increment_neopixel_hue(10).await;
+//         println!("bbbbbb");
+//         Timer::after(Duration::from_millis(50)).await;
+//     }
+// }

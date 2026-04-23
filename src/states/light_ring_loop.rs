@@ -2,7 +2,8 @@ use embassy_time::{Duration, Timer};
 
 use super::{Meowbox, State};
 use crate::{
-    hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
+    //hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED,
+    // YELLOW_LED},
     leds::{LightRing, LightRingState},
     states::{ErrorStateType, Stage},
     tasks::all_leds_off,
@@ -51,12 +52,12 @@ impl Meowbox {
                     all_leds_off().await;
 
                     // turn on green light
-                    GREEN_LED
-                        .lock()
-                        .await
-                        .as_mut()
-                        .unwrap()
-                        .set_high();
+                    // GREEN_LED
+                    //     .lock()
+                    //     .await
+                    //     .as_mut()
+                    //     .unwrap()
+                    //     .set_high();
                 }
                 LightRingState::Green => {
                     // next state = green
@@ -66,12 +67,12 @@ impl Meowbox {
                     all_leds_off().await;
 
                     // turn on green light
-                    BLUE_LED
-                        .lock()
-                        .await
-                        .as_mut()
-                        .unwrap()
-                        .set_high();
+                    // BLUE_LED
+                    //     .lock()
+                    //     .await
+                    //     .as_mut()
+                    //     .unwrap()
+                    //     .set_high();
                 }
                 LightRingState::Blue => {
                     // next state = yellow
@@ -81,12 +82,12 @@ impl Meowbox {
                     all_leds_off().await;
 
                     // turn on yellow light
-                    YELLOW_LED
-                        .lock()
-                        .await
-                        .as_mut()
-                        .unwrap()
-                        .set_high();
+                    // YELLOW_LED
+                    //     .lock()
+                    //     .await
+                    //     .as_mut()
+                    //     .unwrap()
+                    //     .set_high();
                 }
                 LightRingState::Yellow => {
                     // next state = white
@@ -96,12 +97,12 @@ impl Meowbox {
                     all_leds_off().await;
 
                     // turn on white light
-                    WHITE_LED
-                        .lock()
-                        .await
-                        .as_mut()
-                        .unwrap()
-                        .set_high();
+                    // WHITE_LED
+                    //     .lock()
+                    //     .await
+                    //     .as_mut()
+                    //     .unwrap()
+                    //     .set_high();
                 }
                 LightRingState::White => {
                     // next state = red
@@ -111,7 +112,8 @@ impl Meowbox {
                     all_leds_off().await;
 
                     // turn on red light
-                    RED_LED.lock().await.as_mut().unwrap().set_high();
+                    //RED_LED.lock().await.as_mut().unwrap().
+                    // set_high();
                 }
             }
         }

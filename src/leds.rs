@@ -2,7 +2,8 @@
 // signal-command structure.
 
 use crate::{
-    hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED, YELLOW_LED},
+    //hardware::{BLUE_LED, GREEN_LED, RED_LED, WHITE_LED,
+    // YELLOW_LED},
     tasks::all_leds_off,
 };
 
@@ -61,33 +62,36 @@ impl LightRing {
                 // turn off all leds
                 all_leds_off().await;
 
-                RED_LED.lock().await.as_mut().unwrap().set_high();
+                //RED_LED.lock().await.as_mut().unwrap().set_high();
             }
             LightRingState::Green => {
                 // turn off all lights
                 all_leds_off().await;
 
-                GREEN_LED.lock().await.as_mut().unwrap().set_high();
+                //GREEN_LED.lock().await.as_mut().unwrap().
+                // set_high();
             }
             LightRingState::Blue => {
                 // turn off all lights
                 all_leds_off().await;
 
-                BLUE_LED.lock().await.as_mut().unwrap().set_high();
+                //BLUE_LED.lock().await.as_mut().unwrap().set_high();
             }
             LightRingState::Yellow => {
                 // turn off all lights
                 all_leds_off().await;
 
                 // turn on white light
-                YELLOW_LED.lock().await.as_mut().unwrap().set_high();
+                //YELLOW_LED.lock().await.as_mut().unwrap().
+                // set_high();
             }
             LightRingState::White => {
                 // turn off all lights
                 all_leds_off().await;
 
                 // turn on red light
-                WHITE_LED.lock().await.as_mut().unwrap().set_high();
+                //WHITE_LED.lock().await.as_mut().unwrap().
+                // set_high();
             }
         }
     }

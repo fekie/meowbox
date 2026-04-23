@@ -23,7 +23,8 @@ use crate::{
 #[task]
 pub async fn rotary_switch_left_event(
     rotary_switch: &'static hardware::RotarySwitchType,
-    led: &'static hardware::ButtonLEDType,
+    buzzer: &'static hardware::BuzzerType,
+    //led: &'static hardware::ButtonLEDType,
 ) {
     // TODO: basically make the buzzer beeping a separate task, that
     // waits for a message on a channel
@@ -36,17 +37,19 @@ pub async fn rotary_switch_left_event(
             .wait_for_falling_edge()
             .await;
 
-        let params = LEDRotationParams::default();
-        LED_ROTATION_SIGNAL.signal(params);
+        //let params = LEDRotationParams::default();
+        //LED_ROTATION_SIGNAL.signal(params);
 
-        led.lock().await.as_mut().unwrap().set_low();
+        buzzer.lock().await.as_mut().unwrap().set_high();
+
+        println!("wah");
 
         Timer::after(Duration::from_millis(200)).await;
 
         //buzzer.lock().await.as_mut().unwrap().set_high();
         //Timer::after(Duration::from_millis(200)).await;
         //buzzer.lock().await.as_mut().unwrap().set_low();
-        led.lock().await.as_mut().unwrap().set_high();
+        buzzer.lock().await.as_mut().unwrap().set_low();
     }
 }
 

@@ -14,12 +14,12 @@ pub use rotary::{
 };
 
 use super::hardware;
-use crate::hardware::{
-    LED_ARRAY,
-    speaker::{SPEAKER_CHANNEL, SpeakerCommand},
-};
 pub use crate::hardware::{
     mono_display::display_task, speaker::speaker_task,
+};
+use crate::hardware::{
+    //LED_ARRAY,
+    speaker::{SPEAKER_CHANNEL, SpeakerCommand},
 };
 
 pub mod neopixel;
@@ -216,12 +216,12 @@ pub async fn led_rotation() {
         for _ in 0..params.cycles {
             for led_select in &params.selection {
                 let i: usize = *led_select as usize;
-                LED_ARRAY[i]
-                    .lock()
-                    .await
-                    .as_mut()
-                    .unwrap()
-                    .set_high();
+                // LED_ARRAY[i]
+                //     .lock()
+                //     .await
+                //     .as_mut()
+                //     .unwrap()
+                //     .set_high();
 
                 let half_time = params.interval / 2;
 
@@ -229,12 +229,12 @@ pub async fn led_rotation() {
                 Timer::after(Duration::from_millis(half_time)).await;
 
                 if let Some(last) = last_i {
-                    LED_ARRAY[last]
-                        .lock()
-                        .await
-                        .as_mut()
-                        .unwrap()
-                        .set_low();
+                    // LED_ARRAY[last]
+                    //     .lock()
+                    //     .await
+                    //     .as_mut()
+                    //     .unwrap()
+                    //     .set_low();
                 }
 
                 last_i = Some(i);
@@ -249,7 +249,7 @@ pub async fn led_rotation() {
 
 pub async fn all_leds_off() {
     // set all leds to off
-    for led in LED_ARRAY {
-        led.lock().await.as_mut().unwrap().set_low();
-    }
+    // for led in LED_ARRAY {
+    //     //led.lock().await.as_mut().unwrap().set_low();
+    // }
 }
