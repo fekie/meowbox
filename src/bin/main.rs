@@ -186,8 +186,9 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: spawn this task
     let _ = spawner.spawn(display_task(mono_display));
 
-    let _ = non_mutex_peripherals.large_display.brightness(30);
-    let _ = non_mutex_peripherals.large_display.clear_screen(0xffff);
+    //let _ = non_mutex_peripherals.large_display.brightness(30);
+    //let _ = non_mutex_peripherals.large_display.
+    // clear_screen(0xffff);
 
     // let _ = spawner
     //     .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));

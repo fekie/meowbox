@@ -5,6 +5,7 @@ use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex,
 };
 use embassy_time::{Duration, Timer};
+use embedded_hal::pwm::{ErrorType, SetDutyCycle};
 use embedded_hal_bus::spi::{ExclusiveDevice, NoDelay};
 use esp_hal::{
     clock::CpuClock,
@@ -27,6 +28,7 @@ use esp_hal_smartled::{SmartLedsAdapter, buffer_size};
 #[allow(unused_imports)]
 use esp_println::println;
 use ili9341::{DisplaySize240x320, Ili9341, Orientation};
+use lcd_ili9341_spi::{Lcd, LcdOrientation, rgb_to_u16};
 use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
@@ -107,6 +109,30 @@ pub type LargeDisplayType = Ili9341<
     Output<'static>,
 >;
 
+struct DummyPwm(Output<'static>);
+
+impl ErrorType for DummyPwm {
+    type Error = core::convert::Infallible;
+}
+
+impl SetDutyCycle for DummyPwm {
+    fn max_duty_cycle(&self) -> u16 {
+        255
+    }
+
+    fn set_duty_cycle(
+        &mut self,
+        duty: u16,
+    ) -> Result<(), Self::Error> {
+        if duty > 0 {
+            self.0.set_high();
+        } else {
+            self.0.set_low();
+        }
+        Ok(())
+    }
+}
+
 pub struct NonMutexPeripherals {
     pub mono_display: mono_display::DisplayType,
     pub left_rotary_a: Input<'static>,
@@ -118,7 +144,7 @@ pub struct NonMutexPeripherals {
     //pub neopixel: SmartLedsAdapter<'static, 25>,
     //pub i2s_speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
-    pub large_display: LargeDisplayType,
+    //pub large_display: LargeDisplayType,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -286,46 +312,99 @@ pub async fn init_peripherals(
 
     //Timer::after(Duration::from_millis(1000)).await;
 
-    const SPI_FREQUENCY: Rate = Rate::from_mhz(20);
+    // const SPI_FREQUENCY: Rate = Rate::from_mhz(20);
+
+    // let miso = peripherals.GPIO45;
+    // let mosi = peripherals.GPIO38;
+    // let sclk = peripherals.GPIO36;
+    // let cs = peripherals.GPIO48;
+    // let spi = Spi::new(
+    //     peripherals.SPI2,
+    //     spi::master::Config::default()
+    //         .with_frequency(SPI_FREQUENCY)
+    //         .with_mode(esp_hal::spi::Mode::_0),
+    // )
+    // .unwrap()
+    // .with_sck(sclk)
+    // //.with_miso(miso) // order matters, apparently
+    // .with_mosi(mosi);
+    // //.with_cs(cs);
+
+    // let rst = peripherals.GPIO37;
+
+    // let dc = peripherals.GPIO47;
+
+    // let cs = Output::new(cs, Level::High, OutputConfig::default());
+
+    // let spi_device = ExclusiveDevice::new_no_delay(spi,
+    // cs).unwrap();
+
+    // let rst = Output::new(rst, Level::Low,
+    // OutputConfig::default());
+
+    // let dc = Output::new(dc, Level::Low, OutputConfig::default());
+
+    // let interface = SPIInterface::new(spi_device, dc);
+
+    // let large_display: LargeDisplayType = Ili9341::new(
+    //     interface,
+    //     rst,
+    //     &mut Delay::new(),
+    //     Orientation::Portrait,
+    //     DisplaySize240x320,
+    // )
+    // .unwrap();
 
     let miso = peripherals.GPIO45;
     let mosi = peripherals.GPIO38;
     let sclk = peripherals.GPIO36;
     let cs = peripherals.GPIO48;
+
+    let dc = Output::new(
+        peripherals.GPIO47,
+        Level::Low,
+        OutputConfig::default(),
+    );
+    let rst = Output::new(
+        peripherals.GPIO37,
+        Level::Low,
+        OutputConfig::default(),
+    );
+
+    // --- SPI ---
     let spi = Spi::new(
         peripherals.SPI2,
         spi::master::Config::default()
-            .with_frequency(SPI_FREQUENCY)
+            .with_frequency(Rate::from_mhz(10))
             .with_mode(esp_hal::spi::Mode::_0),
     )
     .unwrap()
     .with_sck(sclk)
-    //.with_miso(miso) // order matters, apparently
-    .with_mosi(mosi);
-    //.with_cs(cs);
+    .with_mosi(mosi)
+    .with_miso(miso)
+    .with_cs(cs);
 
-    let rst = peripherals.GPIO37;
+    // --- backlight ---
+    let bl_pin = Output::new(
+        peripherals.GPIO46,
+        Level::High,
+        OutputConfig::default(),
+    );
+    let bl = DummyPwm(bl_pin);
 
-    let dc = peripherals.GPIO47;
+    // --- LCD ---
+    let mut lcd = Lcd::new(spi, dc, rst, bl)
+        .with_orientation(LcdOrientation::Rotate0);
 
-    let cs = Output::new(cs, Level::High, OutputConfig::default());
+    Timer::after_secs(10).await;
 
-    let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    let mut delay = Delay::new();
 
-    let rst = Output::new(rst, Level::Low, OutputConfig::default());
+    lcd.init(&mut delay).unwrap();
+    lcd.set_backlight(255).unwrap();
 
-    let dc = Output::new(dc, Level::Low, OutputConfig::default());
-
-    let interface = SPIInterface::new(spi_device, dc);
-
-    let large_display: LargeDisplayType = Ili9341::new(
-        interface,
-        rst,
-        &mut Delay::new(),
-        Orientation::Portrait,
-        DisplaySize240x320,
-    )
-    .unwrap();
+    lcd.clear(0x0000).unwrap();
+    lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(255, 0, 0));
 
     NonMutexPeripherals {
         mono_display,
@@ -335,7 +414,7 @@ pub async fn init_peripherals(
         right_rotary_b,
         flash, //simple_speaker,
         //neopixel,
-        shifter, //i2s_speaker,
-        large_display,
+        shifter, /*i2s_speaker,
+                  *large_display, */
     }
 }
