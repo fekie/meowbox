@@ -8,7 +8,7 @@ use embassy_time::{Duration, Timer};
 use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
 use esp_hal::{
     i2c::master::{Config as I2cConfig, I2c},
-    peripherals::{GPIO6, GPIO7, I2C0},
+    peripherals::{GPIO6, GPIO7, GPIO21, GPIO35, I2C0},
     time::Rate,
 };
 use heapless::String;
@@ -52,10 +52,10 @@ pub enum MonoDisplayCommand {
 // For whatever reason, the compiler requires static here. I am
 // assuming something in the code below contains something that is
 // 'static.
-pub(super) fn init(
+pub fn init(
     i2c0: I2C0<'static>,
-    gpio6: GPIO6<'static>,
-    gpio7: GPIO7<'static>,
+    scl: GPIO35<'static>,
+    sda: GPIO21<'static>,
 ) -> DisplayType {
     let i2c_bus: I2c<'_, esp_hal::Async> = I2c::new(
         i2c0,
@@ -64,8 +64,8 @@ pub(super) fn init(
             .with_frequency(Rate::from_khz(I2C_FREQUENCY_KHZ)),
     )
     .unwrap()
-    .with_scl(gpio6)
-    .with_sda(gpio7)
+    .with_scl(scl)
+    .with_sda(sda)
     .into_async();
 
     let interface = I2CDisplayInterface::new(i2c_bus);

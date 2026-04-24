@@ -180,8 +180,11 @@ async fn main(spawner: Spawner) -> ! {
     // DO NOT REMOVE
     safety_startup().await;
 
+    let mono_display =
+        MonoDisplay::Graphics(non_mutex_peripherals.mono_display);
+
     // TODO: spawn this task
-    //let _ = spawner.spawn(display_task(mono_display));
+    let _ = spawner.spawn(display_task(mono_display));
 
     // let _ = spawner
     //     .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
@@ -189,7 +192,7 @@ async fn main(spawner: Spawner) -> ! {
     //let output_config_default = OutputConfig::default();
 
     let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(0, 5).await;
+    neopixel_handle.activate_with_hb(170, 5).await;
 
     // mandatory 10 second wait, so that the board can still be
     // flashed if something power hungry is being done
@@ -235,7 +238,7 @@ async fn main(spawner: Spawner) -> ! {
 
     // wait before and after initing display, or else it competes for
     // power and stuff will fail
-    Timer::after(Duration::from_millis(500)).await;
+    //Timer::after(Duration::from_millis(500)).await;
 
     //MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
 
@@ -254,7 +257,7 @@ async fn main(spawner: Spawner) -> ! {
     // }
 
     //info!("display initialized!");
-    Timer::after(Duration::from_millis(500)).await;
+    // Timer::after(Duration::from_millis(500)).await;
 
     // after this, turn on button leds
     //LEFT_BUTTON_LED.lock().await.as_mut().unwrap().set_high();
@@ -344,6 +347,7 @@ async fn main(spawner: Spawner) -> ! {
 
     loop {
         meowbox.tick().await;
+        //println!("bwuh");
 
         // TODO: run the routine here, and after each one finishes it
         // goes and checks what the next routine is needed to
@@ -383,6 +387,8 @@ async fn main(spawner: Spawner) -> ! {
         Timer::after(Duration::from_millis(1)).await;
     }
 }
+
+async fn spawner_stage_one_tasks(spawner: &mut Spawner) {}
 
 /// ALWAYS, UNDER LITERALLY EVERY CIRCUMSTANCE, CALL THIS.
 /// OTHERWISE, THE BOARD COULD BE BRICKED.

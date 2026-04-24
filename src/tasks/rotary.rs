@@ -125,14 +125,14 @@ pub async fn left_rotary_rotation_watcher(
                 // set_high(); RED_LED.lock().await.
                 // as_mut().unwrap().set_low();
                 //light_ring.forward().await;
-                //menu_scroll_down();
+                menu_scroll_down();
             }
             Direction::Anticlockwise => {
                 // RED_LED.lock().await.as_mut().unwrap().set_high();
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_low();
                 //light_ring.backward().await;
-                //menu_scroll_up();
+                menu_scroll_up();
             }
             Direction::None => {}
         }

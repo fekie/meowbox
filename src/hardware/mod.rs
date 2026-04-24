@@ -84,7 +84,7 @@ pub type LedShifterType =
     adv_shift_registers::AdvancedShiftRegister<2, Output<'static>>;
 
 pub struct NonMutexPeripherals {
-    //pub display: mono_display::DisplayType,
+    pub mono_display: mono_display::DisplayType,
     pub left_rotary_a: Input<'static>,
     pub left_rotary_b: Input<'static>,
     pub right_rotary_a: Input<'static>,
@@ -244,6 +244,12 @@ pub async fn init_peripherals(
         output_config_default,
     );
 
+    let mono_display = mono_display::init(
+        peripherals.I2C0,
+        peripherals.GPIO35,
+        peripherals.GPIO21,
+    );
+
     // let i2s_speaker = speaker::init(
     //     peripherals.I2S0,
     //     peripherals.DMA_CH0,
@@ -253,10 +259,10 @@ pub async fn init_peripherals(
     //     peripherals.GPIO40,
     // );
 
-    Timer::after(Duration::from_millis(1000)).await;
+    //Timer::after(Duration::from_millis(1000)).await;
 
     NonMutexPeripherals {
-        //display,
+        mono_display,
         left_rotary_a,
         left_rotary_b,
         right_rotary_a,
