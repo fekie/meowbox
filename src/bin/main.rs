@@ -170,9 +170,9 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_b,
     ));
 
-    let _ = spawner.spawn(neopixel_command_listener(
-        non_mutex_peripherals.neopixel,
-    ));
+    // let _ = spawner.spawn(neopixel_command_listener(
+    //     non_mutex_peripherals.neopixel,
+    // ));
 
     let _ = spawner
         .spawn(led_shifter_listener(non_mutex_peripherals.shifter));
@@ -186,13 +186,16 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: spawn this task
     let _ = spawner.spawn(display_task(mono_display));
 
+    let _ = non_mutex_peripherals.large_display.brightness(30);
+    let _ = non_mutex_peripherals.large_display.clear_screen(0xffff);
+
     // let _ = spawner
     //     .spawn(speaker_task(non_mutex_peripherals.i2s_speaker));
 
     //let output_config_default = OutputConfig::default();
 
-    let neopixel_handle = NeoPixelHandle::new();
-    neopixel_handle.activate_with_hb(170, 5).await;
+    //let neopixel_handle = NeoPixelHandle::new();
+    //neopixel_handle.activate_with_hb(170, 5).await;
 
     // mandatory 10 second wait, so that the board can still be
     // flashed if something power hungry is being done

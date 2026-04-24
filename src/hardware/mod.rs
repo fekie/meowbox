@@ -1,9 +1,11 @@
 #[allow(unused_imports)]
 use defmt::{error, info, warn};
+use display_interface_spi::SPIInterface;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex,
 };
 use embassy_time::{Duration, Timer};
+use embedded_hal_bus::spi::{ExclusiveDevice, NoDelay};
 use esp_hal::{
     clock::CpuClock,
     gpio::{
@@ -24,10 +26,12 @@ use esp_hal::{
 use esp_hal_smartled::{SmartLedsAdapter, buffer_size};
 #[allow(unused_imports)]
 use esp_println::println;
+use ili9341::{DisplaySize240x320, Ili9341, Orientation};
 use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
+pub mod large_display;
 pub mod led_shifter;
 pub mod leds;
 pub mod mono_display;
@@ -63,6 +67,14 @@ pub type RotarySwitchType =
 pub static ROTARY_SWITCH_LEFT: RotarySwitchType = Mutex::new(None);
 pub static ROTARY_SWITCH_RIGHT: RotarySwitchType = Mutex::new(None);
 
+use esp_hal::{
+    self,
+    delay::Delay,
+    i2c::{self},
+    main,
+    spi::{self, master::Spi},
+};
+
 // pub type LEDType =
 //     Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
 // pub static RED_LED: LEDType = Mutex::new(None);
@@ -83,6 +95,18 @@ static BAR: static_cell::StaticCell<MonoDisplayType> =
 pub type LedShifterType =
     adv_shift_registers::AdvancedShiftRegister<2, Output<'static>>;
 
+pub type LargeDisplayType = Ili9341<
+    SPIInterface<
+        ExclusiveDevice<
+            Spi<'static, esp_hal::Blocking>,
+            Output<'static>,
+            NoDelay,
+        >,
+        Output<'static>,
+    >,
+    Output<'static>,
+>;
+
 pub struct NonMutexPeripherals {
     pub mono_display: mono_display::DisplayType,
     pub left_rotary_a: Input<'static>,
@@ -91,9 +115,10 @@ pub struct NonMutexPeripherals {
     pub right_rotary_b: Input<'static>,
     pub flash: FLASH<'static>,
     // it has a buffer size of one because there is only one neopixel
-    pub neopixel: SmartLedsAdapter<'static, 25>,
+    //pub neopixel: SmartLedsAdapter<'static, 25>,
     //pub i2s_speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
+    pub large_display: LargeDisplayType,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -237,12 +262,12 @@ pub async fn init_peripherals(
 
     let flash = peripherals.FLASH;
 
-    let neopixel = neopixel::init(
-        peripherals.LEDC,
-        peripherals.RMT,
-        peripherals.GPIO38,
-        output_config_default,
-    );
+    // let neopixel = neopixel::init(
+    //     peripherals.LEDC,
+    //     peripherals.RMT,
+    //     peripherals.GPIO38,
+    //     output_config_default,
+    // );
 
     let mono_display = mono_display::init(
         peripherals.I2C0,
@@ -261,6 +286,47 @@ pub async fn init_peripherals(
 
     //Timer::after(Duration::from_millis(1000)).await;
 
+    const SPI_FREQUENCY: Rate = Rate::from_mhz(20);
+
+    let miso = peripherals.GPIO45;
+    let mosi = peripherals.GPIO38;
+    let sclk = peripherals.GPIO36;
+    let cs = peripherals.GPIO48;
+    let spi = Spi::new(
+        peripherals.SPI2,
+        spi::master::Config::default()
+            .with_frequency(SPI_FREQUENCY)
+            .with_mode(esp_hal::spi::Mode::_0),
+    )
+    .unwrap()
+    .with_sck(sclk)
+    //.with_miso(miso) // order matters, apparently
+    .with_mosi(mosi);
+    //.with_cs(cs);
+
+    let rst = peripherals.GPIO37;
+
+    let dc = peripherals.GPIO47;
+
+    let cs = Output::new(cs, Level::High, OutputConfig::default());
+
+    let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+
+    let rst = Output::new(rst, Level::Low, OutputConfig::default());
+
+    let dc = Output::new(dc, Level::Low, OutputConfig::default());
+
+    let interface = SPIInterface::new(spi_device, dc);
+
+    let large_display: LargeDisplayType = Ili9341::new(
+        interface,
+        rst,
+        &mut Delay::new(),
+        Orientation::Portrait,
+        DisplaySize240x320,
+    )
+    .unwrap();
+
     NonMutexPeripherals {
         mono_display,
         left_rotary_a,
@@ -268,7 +334,8 @@ pub async fn init_peripherals(
         right_rotary_a,
         right_rotary_b,
         flash, //simple_speaker,
-        neopixel,
+        //neopixel,
         shifter, //i2s_speaker,
+        large_display,
     }
 }
