@@ -1,13 +1,26 @@
+//! Listens for all inputs. Designed for use in the state machine as
+//! inputs through here can either be polled or waited on. The input
+//! listener is also able to be killed by a signal (so that it is
+//! possible to get a state machine to stop, even if it is waiting on
+//! a signal.)
+
+use embassy_executor::task;
+use embassy_sync::{
+    blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
+};
 use rotary_encoder_embedded::Direction;
+
+const BUFFERED_INPUTS_SIZE: usize = 32;
+
+pub static INPUT_CHANNEL: Channel<
+    CriticalSectionRawMutex,
+    Input,
+    BUFFERED_INPUTS_SIZE,
+> = Channel::new();
 
 // okay so. i will store how many times something occurs. When an
 // input is "taken", a parameter will be passed in
 
-/// Listens for all inputs. Designed for use in the state machine as
-/// inputs through here can either be polled or waited on. The input
-/// listener is also able to be killed by a signal (so that it is
-/// possible to get a state machine to stop, even if it is waiting on
-/// a signal.)
 pub struct InputListener {
     /// This is marked as Some with the specified input if there is
     /// an external source waiting on a signal. It basically says
@@ -22,6 +35,11 @@ pub struct InputListener {
     rotary_encoder_press_right: u8,
     rotary_encoder_rotate_right_cw: u8,
     rotary_encoder_rotate_right_ccw: u8,
+}
+
+#[task]
+pub async fn start_input_listener_listener() {
+    loop {}
 }
 
 // basically i will need a way to "drain" unused inputs. I think I
