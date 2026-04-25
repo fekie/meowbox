@@ -37,6 +37,7 @@ use meowbox::{
         },
         neopixel,
     },
+    input_listener::start_input_listener_listener,
     states::{MenuState, Meowbox, Stage, State},
     tasks::{
         display_task, led_rotation, left_button_event,
@@ -144,6 +145,8 @@ async fn main(spawner: Spawner) -> ! {
     //     &hardware::LEFT_BUTTON_LED,
     //     &hardware::BUZZER,
     // ));
+
+    //let _ = spawner.spawn(start_input_listener_listener());
 
     let _ = spawner.spawn(rotary_switch_left_event(
         &hardware::ROTARY_SWITCH_LEFT,

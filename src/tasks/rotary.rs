@@ -196,6 +196,7 @@ fn menu_scroll_down() {
     let menu_status_handle = MenuStatusHandle::new();
 
     let mut scroll = menu_status_handle.scroll();
+    dbg!(scroll);
     scroll = (scroll + 1) % menu_status_handle.current_layer_size();
     menu_status_handle.set_scroll(scroll);
     menu_status_handle.set_needs_update(true);
