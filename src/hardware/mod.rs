@@ -387,24 +387,24 @@ pub async fn init_peripherals(
     // --- backlight ---
     let bl_pin = Output::new(
         peripherals.GPIO46,
-        Level::High,
+        Level::Low,
         OutputConfig::default(),
     );
     let bl = DummyPwm(bl_pin);
 
     // --- LCD ---
-    let mut lcd = Lcd::new(spi, dc, rst, bl)
-        .with_orientation(LcdOrientation::Rotate0);
+    //let mut lcd = Lcd::new(spi, dc, rst, bl)
+    //  .with_orientation(LcdOrientation::Rotate0);
 
     Timer::after_secs(10).await;
 
     let mut delay = Delay::new();
 
-    lcd.init(&mut delay).unwrap();
-    lcd.set_backlight(255).unwrap();
+    //lcd.init(&mut delay).unwrap();
+    //lcd.set_backlight(255).unwrap();
 
-    lcd.clear(0x0000).unwrap();
-    lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(255, 0, 0));
+    //lcd.clear(0x0000).unwrap();
+    //lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(255, 0, 0));
 
     NonMutexPeripherals {
         mono_display,
