@@ -4,8 +4,12 @@ use heapless::String;
 
 use super::{Meowbox, State};
 use crate::{
-    hardware::mono_display::{
-        MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH, MonoDisplayCommand,
+    hardware::{
+        led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
+        mono_display::{
+            MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
+            MonoDisplayCommand,
+        },
     },
     menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle},
     states::{ErrorStateType, MenuState, Stage},
@@ -25,6 +29,14 @@ impl Meowbox {
     }
 
     async fn setup_menu_state(&mut self) {
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::SetHigh(LED::ButtonRight))
+            .await;
+
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::SetHigh(LED::AmberLeft))
+            .await;
+
         MONO_DISPLAY_CH
             .send(MonoDisplayCommand::SwitchToTerminal)
             .await;
