@@ -163,16 +163,6 @@ async fn main(spawner: Spawner) -> ! {
 
     //let _ = spawner.spawn(led_rotation());
 
-    let _ = spawner.spawn(right_rotary_rotation_watcher(
-        non_mutex_peripherals.right_rotary_a,
-        non_mutex_peripherals.right_rotary_b,
-    ));
-
-    let _ = spawner.spawn(left_rotary_rotation_watcher(
-        non_mutex_peripherals.left_rotary_a,
-        non_mutex_peripherals.left_rotary_b,
-    ));
-
     // let _ = spawner.spawn(neopixel_command_listener(
     //     non_mutex_peripherals.neopixel,
     // ));
@@ -182,6 +172,16 @@ async fn main(spawner: Spawner) -> ! {
 
     // DO NOT REMOVE
     safety_startup().await;
+
+    let _ = spawner.spawn(right_rotary_rotation_watcher(
+        non_mutex_peripherals.right_rotary_a,
+        non_mutex_peripherals.right_rotary_b,
+    ));
+
+    let _ = spawner.spawn(left_rotary_rotation_watcher(
+        non_mutex_peripherals.left_rotary_a,
+        non_mutex_peripherals.left_rotary_b,
+    ));
 
     let mono_display =
         MonoDisplay::Graphics(non_mutex_peripherals.mono_display);

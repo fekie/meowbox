@@ -8,6 +8,7 @@ use defmt::dbg;
 use embassy_executor::task;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
+    mutex::Mutex,
 };
 use rotary_encoder_embedded::Direction;
 use static_cell::StaticCell;
@@ -23,13 +24,13 @@ pub static INPUT_CHANNEL: Channel<
 // okay so. i will store how many times something occurs. When an
 // input is "taken", a parameter will be passed in
 
-#[derive(Default)]
+//#[derive(Default)]
 pub struct InputListener {
     /// This is marked as Some with the specified input if there is
     /// an external source waiting on a signal. It basically says
     /// to start "forwarding" a signal to a waiter, instead of
     /// incrementing the counter for the keypress.
-    external_wait_for_signal: Option<Input>,
+    pub external_wait_for_signal: Option<Input>,
 
     rotary_encoder_press_left: u8,
     rotary_encoder_rotate_left_cw: u8,
@@ -40,16 +41,29 @@ pub struct InputListener {
     rotary_encoder_rotate_right_ccw: u8,
 }
 
-pub static INPUT_LISTENER: StaticCell<InputListener> =
-    StaticCell::new();
+static INPUT_LISTENER: Mutex<CriticalSectionRawMutex, InputListener> =
+    Mutex::new(InputListener {
+        external_wait_for_signal: None,
+        rotary_encoder_press_left: 0,
+        rotary_encoder_rotate_left_cw: 0,
+        rotary_encoder_rotate_left_ccw: 0,
+        rotary_encoder_press_right: 0,
+        rotary_encoder_rotate_right_cw: 0,
+        rotary_encoder_rotate_right_ccw: 0,
+    });
+
+// pub static INPUT_LISTENER: StaticCell<InputListener> =
+//     StaticCell::new();
 
 /// Initializes listener and starts listening for inputs.
 #[task]
 pub async fn start_input_listener_listener() {
-    INPUT_LISTENER.init(InputListener::new());
+    //INPUT_LISTENER.init(InputListener::new());
 
     loop {
         let input = INPUT_CHANNEL.receive().await;
+
+        // let foo = INPUT_LISTENER.into();
 
         dbg!(input);
     }
@@ -72,9 +86,9 @@ pub enum Input {
 pub struct KillSignal;
 
 impl InputListener {
-    pub fn new() -> Self {
-        Self::default()
-    }
+    // pub fn new() -> Self {
+    //     Self::default()
+    // }
 
     /// Wait for any input, including inputs that have already
     /// happened. Each call to this function will "take" one instance
