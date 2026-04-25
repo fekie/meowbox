@@ -4,6 +4,16 @@
 //! possible to get a state machine to stop, even if it is waiting on
 //! a signal.)
 
+// NOTE: This module is a bit hacky. I had to make things atomic and
+// mutexes instead of having it all be a struct. This is because the
+// struct would have been a mutex, and the user needs the ability to
+// be able to wait on a signal (which would require holding the lock
+// on the mutex). I did not want to have some data inside the struct
+// and some of it be global. Therefore all information associated with
+// the input listener are atomics or mutexes over individual structs.
+// As such, we must keep the visibility of items limited so that this
+// module is easy to use.
+
 use defmt::dbg;
 use embassy_executor::task;
 use embassy_futures::select::Either;
@@ -58,9 +68,6 @@ static INPUT_LISTENER: Mutex<CriticalSectionRawMutex, InputListener> =
         rotary_encoder_rotate_right_ccw: 0,
     });
 
-// pub static INPUT_LISTENER: StaticCell<InputListener> =
-//     StaticCell::new();
-
 /// Initializes listener and starts listening for inputs.
 #[task]
 pub async fn start_input_listener_listener() {
@@ -98,7 +105,7 @@ pub async fn start_input_listener_listener() {
 // will have to do this on a time basis. Or I could continue to store
 // that it at least happened once.
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Input {
     RotaryEncoderPressLeft,
     RotaryEncoderRotateLeft(Direction),
@@ -136,9 +143,98 @@ impl InputListener {
     ///
     /// Returns Ok(None) if none of that input was found
     pub fn take_input(
+        &mut self,
+        input: Input,
         take_total: bool,
     ) -> Result<Option<u8>, KillSignal> {
-        todo!()
+        match input {
+            Input::RotaryEncoderPressLeft => {
+                if self.rotary_encoder_press_left > 0 {
+                    match take_total {
+                        true => {
+                            let amount =
+                                self.rotary_encoder_press_left;
+                            self.rotary_encoder_press_left = 0;
+                            Ok(Some(amount))
+                        }
+                        false => {
+                            self.rotary_encoder_press_left -= 1;
+                            Ok(Some(1))
+                        }
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+            Input::RotaryEncoderRotateLeft(dir) => {
+                let counter = match dir {
+                    Direction::Clockwise => {
+                        &mut self.rotary_encoder_rotate_left_cw
+                    }
+                    Direction::Anticlockwise => {
+                        &mut self.rotary_encoder_rotate_left_ccw
+                    }
+                    Direction::None => {
+                        panic!("Direction should not be None.")
+                    }
+                };
+
+                if *counter > 0 {
+                    if take_total {
+                        let amount = *counter;
+                        *counter = 0;
+                        Ok(Some(amount))
+                    } else {
+                        *counter -= 1;
+                        Ok(Some(1))
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+
+            Input::RotaryEncoderPressRight => {
+                if self.rotary_encoder_press_right > 0 {
+                    if take_total {
+                        let amount = self.rotary_encoder_press_right;
+                        self.rotary_encoder_press_right = 0;
+                        Ok(Some(amount))
+                    } else {
+                        self.rotary_encoder_press_right -= 1;
+                        Ok(Some(1))
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+
+            Input::RotaryEncoderRotateRight(dir) => {
+                let counter = match dir {
+                    Direction::Clockwise => {
+                        &mut self.rotary_encoder_rotate_right_cw
+                    }
+                    Direction::Anticlockwise => {
+                        &mut self.rotary_encoder_rotate_right_ccw
+                    }
+                    Direction::None => {
+                        panic!("Direction should not be None.")
+                    }
+                };
+
+                if *counter > 0 {
+                    if take_total {
+                        let amount = *counter;
+                        *counter = 0;
+                        Ok(Some(amount))
+                    } else {
+                        *counter -= 1;
+                        Ok(Some(1))
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+        }
     }
 
     /// Returns true if there are inputs that are able to be taken.
