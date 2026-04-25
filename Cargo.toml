@@ -29,6 +29,8 @@ esp-println = { version = "0.16.1", features = ["defmt-espflash", "esp32s3"] }
 
 #strum = { version = "0.28.0", default-features = false }
 
+
+#either = { version = "1.15.0", default-features = false }
 critical-section = "1.2.0"
 static_cell = "2.1.1"
 ssd1306 = { version = "0.10.0", features = ["async", "graphics"] }
@@ -43,7 +45,6 @@ esp-storage = { version = "0.8.1", features = ["esp32s3"] }
 embedded-storage = "0.3.1"
 smart-leds = "0.4.0"
 esp-hal-smartled = { version = "0.17.0", features = ["esp32s3"] }
-either = { version = "1.15.0", default-features = false }
 adv-shift-registers = "0.2.5"
 embedded-hal = "1.0.0"
 ili9341 = "0.6.0"

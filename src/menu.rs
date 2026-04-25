@@ -3,7 +3,6 @@ use core::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst},
 };
 
-use either::Either;
 use esp_println::{dbg, println};
 use heapless::{String, Vec};
 use static_cell::StaticCell;

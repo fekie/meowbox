@@ -6,12 +6,15 @@
 
 use defmt::dbg;
 use embassy_executor::task;
+use embassy_futures::select::Either;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
     mutex::Mutex,
 };
 use rotary_encoder_embedded::Direction;
 use static_cell::StaticCell;
+
+mod signal_acceptor;
 
 const BUFFERED_INPUTS_SIZE: usize = 32;
 
@@ -24,13 +27,16 @@ pub static INPUT_CHANNEL: Channel<
 // okay so. i will store how many times something occurs. When an
 // input is "taken", a parameter will be passed in
 
-//#[derive(Default)]
+#[derive(Clone, Copy)]
+pub struct AllInputs;
+
+#[derive(Clone)]
 pub struct InputListener {
     /// This is marked as Some with the specified input if there is
     /// an external source waiting on a signal. It basically says
     /// to start "forwarding" a signal to a waiter, instead of
     /// incrementing the counter for the keypress.
-    pub external_wait_for_signal: Option<Input>,
+    pub external_wait_for_signal: Option<Either<Input, AllInputs>>,
 
     rotary_encoder_press_left: u8,
     rotary_encoder_rotate_left_cw: u8,
@@ -63,6 +69,22 @@ pub async fn start_input_listener_listener() {
     loop {
         let input = INPUT_CHANNEL.receive().await;
 
+        let external_wait_for_signal = INPUT_LISTENER
+            .lock()
+            .await
+            .external_wait_for_signal
+            .clone();
+
+        match external_wait_for_signal {
+            // check to make sure that the input doesnt need to be
+            // forwarded
+            Some(input_kind) => match input_kind {
+                Either::First(input) => todo!(),
+                Either::Second(_all_inputs) => todo!(),
+            },
+            None => todo!(),
+        }
+
         // let foo = INPUT_LISTENER.into();
 
         dbg!(input);
@@ -73,7 +95,7 @@ pub async fn start_input_listener_listener() {
 // will have to do this on a time basis. Or I could continue to store
 // that it at least happened once.
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Input {
     RotaryEncoderPressLeft,
     RotaryEncoderRotateLeft(Direction),

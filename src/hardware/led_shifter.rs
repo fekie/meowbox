@@ -1,5 +1,5 @@
 use adv_shift_registers::wrappers::ShifterPin;
-use either::Either::Left;
+//use either::Either::Left;
 use embassy_executor::task;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,

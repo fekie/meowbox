@@ -317,12 +317,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "either"
-version = "1.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
-
-[[package]]
 name = "embassy-embedded-hal"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1198,7 +1192,6 @@ dependencies = [
  "defmt 1.0.1",
  "display-interface",
  "display-interface-spi",
- "either",
  "embassy-executor",
  "embassy-futures",
  "embassy-sync 0.7.2",
