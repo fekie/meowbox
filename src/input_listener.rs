@@ -1,0 +1,64 @@
+use rotary_encoder_embedded::Direction;
+
+// okay so. i will store how many times something occurs. When an
+// input is "taken", a parameter will be passed in
+
+/// Listens for all inputs. Designed for use in the state machine as
+/// inputs through here can either be polled or waited on. The input
+/// listener is also able to be killed by a signal (so that it is
+/// possible to get a state machine to stop, even if it is waiting on
+/// a signal.)
+pub struct InputListener {
+    /// This is marked as Some with the specified input if there is
+    /// an external source waiting on a signal. It basically says
+    /// to start "forwarding" a signal to a waiter, instead of
+    /// incrementing the counter for the keypress.
+    external_wait_for_signal: Option<Input>,
+
+    rotary_encoder_press_left: u8,
+}
+
+// basically i will need a way to "drain" unused inputs. I think I
+// will have to do this on a time basis. Or I could continue to store
+// that it at least happened once.
+
+pub enum Input {
+    RotaryEncoderPressLeft,
+    RotaryEncoderRotateLeft(Direction),
+    RotaryEncoderPressRight,
+    RotaryEncoderRotateRight(Direction),
+}
+
+impl Input {
+    /// Wait for any input, including inputs that have already
+    /// happened. Each call to this function will "take" one instance
+    /// of the keypress.
+    pub fn wait_for_any() {
+        todo!()
+    }
+
+    /// Wait for a specific kind of input, including inputs that have
+    /// already happened. Each call to this function will "take" one
+    /// instance of the keypress.
+    pub fn wait_for(input_kind: Input) {
+        todo!()
+    }
+
+    /// "Takes" one of the inputs that already exists. It is an option
+    /// to take all of the inputs (an example is someone pressing
+    /// a button 8 times, but we only care about the rest being
+    /// buffered). Returns Some(total_taken) if an input was found.
+    pub fn take_input(take_total: bool) -> Option<u8> {
+        todo!()
+    }
+
+    /// Returns true if there are inputs that are able to be taken.
+    pub fn inputs_available() -> bool {
+        todo!()
+    }
+
+    /// Clears all signals and flags.
+    pub fn clear() {
+        todo!()
+    }
+}
