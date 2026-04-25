@@ -396,7 +396,7 @@ pub async fn init_peripherals(
     //let mut lcd = Lcd::new(spi, dc, rst, bl)
     //  .with_orientation(LcdOrientation::Rotate0);
 
-    Timer::after_secs(10).await;
+    //Timer::after_secs(10).await;
 
     let mut delay = Delay::new();
 
