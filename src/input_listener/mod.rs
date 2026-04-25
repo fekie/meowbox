@@ -64,8 +64,6 @@ static INPUT_LISTENER: Mutex<CriticalSectionRawMutex, InputListener> =
 /// Initializes listener and starts listening for inputs.
 #[task]
 pub async fn start_input_listener_listener() {
-    //INPUT_LISTENER.init(InputListener::new());
-
     loop {
         let input = INPUT_CHANNEL.receive().await;
 
@@ -79,15 +77,20 @@ pub async fn start_input_listener_listener() {
             // check to make sure that the input doesnt need to be
             // forwarded
             Some(input_kind) => match input_kind {
-                Either::First(input) => todo!(),
-                Either::Second(_all_inputs) => todo!(),
+                Either::First(waited_input) => INPUT_LISTENER
+                    .lock()
+                    .await
+                    .handle_wait_for_signal(input, waited_input),
+                Either::Second(_any_input) => INPUT_LISTENER
+                    .lock()
+                    .await
+                    .handle_wait_for_any_signal(input),
             },
-            None => todo!(),
+            None => INPUT_LISTENER
+                .lock()
+                .await
+                .handle_no_wait_for_signal(input),
         }
-
-        // let foo = INPUT_LISTENER.into();
-
-        dbg!(input);
     }
 }
 
