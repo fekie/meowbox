@@ -14,6 +14,11 @@
 // As such, we must keep the visibility of items limited so that this
 // module is easy to use.
 
+use core::{
+    fmt,
+    sync::atomic::{AtomicBool, AtomicU8, Ordering::SeqCst},
+};
+
 use defmt::dbg;
 use embassy_executor::task;
 use embassy_futures::select::Either;
@@ -37,36 +42,50 @@ pub static INPUT_CHANNEL: Channel<
 // okay so. i will store how many times something occurs. When an
 // input is "taken", a parameter will be passed in
 
+pub static ROTARY_ENCODER_PRESS_LEFT: AtomicU8 = AtomicU8::new(0);
+pub static ROTARY_ENCODER_ROTATE_LEFT_CW: AtomicU8 = AtomicU8::new(0);
+pub static ROTARY_ENCODER_ROTATE_LEFT_CCW: AtomicU8 =
+    AtomicU8::new(0);
+
+pub static ROTARY_ENCODER_PRESS_RIGHT: AtomicU8 = AtomicU8::new(0);
+pub static ROTARY_ENCODER_ROTATE_RIGHT_CW: AtomicU8 =
+    AtomicU8::new(0);
+pub static ROTARY_ENCODER_ROTATE_RIGHT_CCW: AtomicU8 =
+    AtomicU8::new(0);
+
+/// This is marked as Some with the specified input if there is
+/// an external source waiting on a signal. It basically says
+/// to start "forwarding" a signal to a waiter, instead of
+/// incrementing the counter for the keypress.
+pub static EXTERNAL_WAIT_FOR_SIGNAL: Mutex<
+    CriticalSectionRawMutex,
+    Option<Either<Input, AllInputs>>,
+> = Mutex::new(None);
+
 #[derive(Clone, Copy)]
 pub struct AllInputs;
 
 #[derive(Clone)]
-pub struct InputListener {
-    /// This is marked as Some with the specified input if there is
-    /// an external source waiting on a signal. It basically says
-    /// to start "forwarding" a signal to a waiter, instead of
-    /// incrementing the counter for the keypress.
-    pub external_wait_for_signal: Option<Either<Input, AllInputs>>,
+pub struct InputListener;
+//pub external_wait_for_signal: Option<Either<Input, AllInputs>>,
+// rotary_encoder_press_left: u8,
+// rotary_encoder_rotate_left_cw: u8,
+// rotary_encoder_rotate_left_ccw: u8,
 
-    rotary_encoder_press_left: u8,
-    rotary_encoder_rotate_left_cw: u8,
-    rotary_encoder_rotate_left_ccw: u8,
+// rotary_encoder_press_right: u8,
+// rotary_encoder_rotate_right_cw: u8,
+// rotary_encoder_rotate_right_ccw: u8,
 
-    rotary_encoder_press_right: u8,
-    rotary_encoder_rotate_right_cw: u8,
-    rotary_encoder_rotate_right_ccw: u8,
-}
-
-static INPUT_LISTENER: Mutex<CriticalSectionRawMutex, InputListener> =
-    Mutex::new(InputListener {
-        external_wait_for_signal: None,
-        rotary_encoder_press_left: 0,
-        rotary_encoder_rotate_left_cw: 0,
-        rotary_encoder_rotate_left_ccw: 0,
-        rotary_encoder_press_right: 0,
-        rotary_encoder_rotate_right_cw: 0,
-        rotary_encoder_rotate_right_ccw: 0,
-    });
+// static INPUT_LISTENER: Mutex<CriticalSectionRawMutex,
+// InputListener> =     Mutex::new(InputListener {
+//         external_wait_for_signal: None,
+//         rotary_encoder_press_left: 0,
+//         rotary_encoder_rotate_left_cw: 0,
+//         rotary_encoder_rotate_left_ccw: 0,
+//         rotary_encoder_press_right: 0,
+//         rotary_encoder_rotate_right_cw: 0,
+//         rotary_encoder_rotate_right_ccw: 0,
+//     });
 
 /// Initializes listener and starts listening for inputs.
 #[task]
@@ -74,29 +93,17 @@ pub async fn start_input_listener_listener() {
     loop {
         let input = INPUT_CHANNEL.receive().await;
 
-        let external_wait_for_signal = INPUT_LISTENER
-            .lock()
-            .await
-            .external_wait_for_signal
-            .clone();
+        let external_wait_for_signal =
+            EXTERNAL_WAIT_FOR_SIGNAL.lock().await.clone();
 
         match external_wait_for_signal {
             // check to make sure that the input doesnt need to be
             // forwarded
             Some(input_kind) => match input_kind {
-                Either::First(waited_input) => INPUT_LISTENER
-                    .lock()
-                    .await
-                    .handle_wait_for_signal(input, waited_input),
-                Either::Second(_any_input) => INPUT_LISTENER
-                    .lock()
-                    .await
-                    .handle_wait_for_any_signal(input),
+                Either::First(waited_input) => todo!(),
+                Either::Second(_any_input) => todo!(),
             },
-            None => INPUT_LISTENER
-                .lock()
-                .await
-                .handle_no_wait_for_signal(input),
+            None => InputListener::handle_no_wait_for_signal(input),
         }
     }
 }
@@ -142,97 +149,62 @@ impl InputListener {
     /// buffered). Returns Some(total_taken) if an input was found.
     ///
     /// Returns Ok(None) if none of that input was found
+
     pub fn take_input(
-        &mut self,
         input: Input,
         take_total: bool,
     ) -> Result<Option<u8>, KillSignal> {
-        match input {
+        let counter = match input {
             Input::RotaryEncoderPressLeft => {
-                if self.rotary_encoder_press_left > 0 {
-                    match take_total {
-                        true => {
-                            let amount =
-                                self.rotary_encoder_press_left;
-                            self.rotary_encoder_press_left = 0;
-                            Ok(Some(amount))
-                        }
-                        false => {
-                            self.rotary_encoder_press_left -= 1;
-                            Ok(Some(1))
-                        }
-                    }
-                } else {
-                    Ok(None)
-                }
+                &ROTARY_ENCODER_PRESS_LEFT
             }
-            Input::RotaryEncoderRotateLeft(dir) => {
-                let counter = match dir {
-                    Direction::Clockwise => {
-                        &mut self.rotary_encoder_rotate_left_cw
-                    }
-                    Direction::Anticlockwise => {
-                        &mut self.rotary_encoder_rotate_left_ccw
-                    }
-                    Direction::None => {
-                        panic!("Direction should not be None.")
-                    }
-                };
 
-                if *counter > 0 {
-                    if take_total {
-                        let amount = *counter;
-                        *counter = 0;
-                        Ok(Some(amount))
-                    } else {
-                        *counter -= 1;
-                        Ok(Some(1))
-                    }
-                } else {
-                    Ok(None)
+            Input::RotaryEncoderRotateLeft(dir) => match dir {
+                Direction::Clockwise => {
+                    &ROTARY_ENCODER_ROTATE_LEFT_CW
                 }
-            }
+                Direction::Anticlockwise => {
+                    &ROTARY_ENCODER_ROTATE_LEFT_CCW
+                }
+                Direction::None => {
+                    panic!("Direction should not be None.")
+                }
+            },
 
             Input::RotaryEncoderPressRight => {
-                if self.rotary_encoder_press_right > 0 {
-                    if take_total {
-                        let amount = self.rotary_encoder_press_right;
-                        self.rotary_encoder_press_right = 0;
-                        Ok(Some(amount))
-                    } else {
-                        self.rotary_encoder_press_right -= 1;
-                        Ok(Some(1))
-                    }
-                } else {
-                    Ok(None)
-                }
+                &ROTARY_ENCODER_PRESS_RIGHT
             }
 
-            Input::RotaryEncoderRotateRight(dir) => {
-                let counter = match dir {
-                    Direction::Clockwise => {
-                        &mut self.rotary_encoder_rotate_right_cw
-                    }
-                    Direction::Anticlockwise => {
-                        &mut self.rotary_encoder_rotate_right_ccw
-                    }
-                    Direction::None => {
-                        panic!("Direction should not be None.")
-                    }
-                };
-
-                if *counter > 0 {
-                    if take_total {
-                        let amount = *counter;
-                        *counter = 0;
-                        Ok(Some(amount))
-                    } else {
-                        *counter -= 1;
-                        Ok(Some(1))
-                    }
-                } else {
-                    Ok(None)
+            Input::RotaryEncoderRotateRight(dir) => match dir {
+                Direction::Clockwise => {
+                    &ROTARY_ENCODER_ROTATE_RIGHT_CW
                 }
+                Direction::Anticlockwise => {
+                    &ROTARY_ENCODER_ROTATE_RIGHT_CCW
+                }
+                Direction::None => {
+                    panic!("Direction should not be None.")
+                }
+            },
+        };
+
+        if take_total {
+            // Atomically take everything
+            let amount = counter.swap(0, SeqCst);
+            if amount > 0 {
+                Ok(Some(amount))
+            } else {
+                Ok(None)
+            }
+        } else {
+            // Atomically take one (if available)
+            let result = counter.fetch_update(SeqCst, SeqCst, |x| {
+                if x > 0 { Some(x - 1) } else { None }
+            });
+
+            match result {
+                Ok(_) => Ok(Some(1)),
+                Err(_) => Ok(None),
             }
         }
     }

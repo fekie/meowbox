@@ -1,19 +1,24 @@
+use core::sync::atomic::Ordering::SeqCst;
+
 use rotary_encoder_embedded::Direction;
 
 use super::{Input, InputListener};
 
 impl InputListener {
-    pub(super) fn handle_no_wait_for_signal(&mut self, input: Input) {
+    pub(super) fn handle_no_wait_for_signal(input: Input) {
         match input {
             Input::RotaryEncoderPressLeft => {
-                self.rotary_encoder_press_left += 1
+                super::ROTARY_ENCODER_PRESS_LEFT.fetch_add(1, SeqCst);
             }
+
             Input::RotaryEncoderRotateLeft(dir) => match dir {
                 Direction::Clockwise => {
-                    self.rotary_encoder_rotate_left_cw += 1;
+                    super::ROTARY_ENCODER_ROTATE_LEFT_CW
+                        .fetch_add(1, SeqCst);
                 }
                 Direction::Anticlockwise => {
-                    self.rotary_encoder_rotate_left_ccw += 1
+                    super::ROTARY_ENCODER_ROTATE_LEFT_CCW
+                        .fetch_add(1, SeqCst);
                 }
                 Direction::None => {
                     panic!("Direction should not be None.")
@@ -21,14 +26,18 @@ impl InputListener {
             },
 
             Input::RotaryEncoderPressRight => {
-                self.rotary_encoder_press_right += 1
+                super::ROTARY_ENCODER_PRESS_RIGHT
+                    .fetch_add(1, SeqCst);
             }
+
             Input::RotaryEncoderRotateRight(dir) => match dir {
                 Direction::Clockwise => {
-                    self.rotary_encoder_rotate_right_cw += 1
+                    super::ROTARY_ENCODER_ROTATE_RIGHT_CW
+                        .fetch_add(1, SeqCst);
                 }
                 Direction::Anticlockwise => {
-                    self.rotary_encoder_rotate_right_ccw += 1
+                    super::ROTARY_ENCODER_ROTATE_RIGHT_CCW
+                        .fetch_add(1, SeqCst);
                 }
                 Direction::None => {
                     panic!("Direction should not be None.")
@@ -42,10 +51,7 @@ impl InputListener {
         input: Input,
         waited_input: Input,
     ) {
-        if !(input == waited_input) {
-            self.handle_no_wait_for_signal(input);
-            return;
-        }
+        todo!()
     }
 
     pub(super) fn handle_wait_for_any_signal(
