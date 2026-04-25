@@ -16,6 +16,12 @@ pub struct InputListener {
     external_wait_for_signal: Option<Input>,
 
     rotary_encoder_press_left: u8,
+    rotary_encoder_rotate_left_cw: u8,
+    rotary_encoder_rotate_left_ccw: u8,
+
+    rotary_encoder_press_right: u8,
+    rotary_encoder_rotate_right_cw: u8,
+    rotary_encoder_rotate_right_ccw: u8,
 }
 
 // basically i will need a way to "drain" unused inputs. I think I
@@ -29,18 +35,22 @@ pub enum Input {
     RotaryEncoderRotateRight(Direction),
 }
 
+/// If this is found in a Result, the program should exit and change
+/// state
+pub struct KillSignal;
+
 impl Input {
     /// Wait for any input, including inputs that have already
     /// happened. Each call to this function will "take" one instance
     /// of the keypress.
-    pub fn wait_for_any() {
+    pub fn wait_for_any() -> Result<Input, KillSignal> {
         todo!()
     }
 
     /// Wait for a specific kind of input, including inputs that have
     /// already happened. Each call to this function will "take" one
     /// instance of the keypress.
-    pub fn wait_for(input_kind: Input) {
+    pub fn wait_for(input_kind: Input) -> Result<(), KillSignal> {
         todo!()
     }
 
@@ -48,12 +58,21 @@ impl Input {
     /// to take all of the inputs (an example is someone pressing
     /// a button 8 times, but we only care about the rest being
     /// buffered). Returns Some(total_taken) if an input was found.
-    pub fn take_input(take_total: bool) -> Option<u8> {
+    ///
+    /// Returns Ok(None) if none of that input was found
+    pub fn take_input(
+        take_total: bool,
+    ) -> Result<Option<u8>, KillSignal> {
         todo!()
     }
 
     /// Returns true if there are inputs that are able to be taken.
-    pub fn inputs_available() -> bool {
+    pub fn inputs_available() -> Result<bool, KillSignal> {
+        todo!()
+    }
+
+    /// Returns Ok(()) if there is no kill signal
+    pub fn check_kill_signal() -> Result<(), KillSignal> {
         todo!()
     }
 
