@@ -170,6 +170,16 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner
         .spawn(led_shifter_listener(non_mutex_peripherals.shifter));
 
+    LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
+
+    let mono_display =
+        MonoDisplay::Graphics(non_mutex_peripherals.mono_display);
+
+    let _ = spawner.spawn(display_task(mono_display));
+
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
     // DO NOT REMOVE
     safety_startup().await;
 
@@ -183,11 +193,7 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_b,
     ));
 
-    let mono_display =
-        MonoDisplay::Graphics(non_mutex_peripherals.mono_display);
-
     // TODO: spawn this task
-    let _ = spawner.spawn(display_task(mono_display));
 
     //let _ = non_mutex_peripherals.large_display.brightness(30);
     //let _ = non_mutex_peripherals.large_display.
