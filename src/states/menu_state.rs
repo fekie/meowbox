@@ -252,7 +252,7 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 
     if let Some(amount) = left_rotary_encoder_cw {
         for _ in 0..amount {
-            menu_scroll_down();
+            menu_scroll_down().await;
         }
     }
 
@@ -263,7 +263,7 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 
     if let Some(amount) = left_rotary_encoder_ccw {
         for _ in 0..amount {
-            menu_scroll_up();
+            menu_scroll_up().await;
         }
     }
 
@@ -285,17 +285,24 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 }
 
 // Scrolls down the menu by 1 (which increments the scroll offset)
-fn menu_scroll_down() {
+async fn menu_scroll_down() {
     let menu_status_handle = MenuStatusHandle::new();
 
     let mut scroll = menu_status_handle.scroll();
     scroll = (scroll + 1) % menu_status_handle.current_layer_size();
     menu_status_handle.set_scroll(scroll);
     menu_status_handle.set_needs_update(true);
+
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::TemporaryToggle(
+            LED::AmberLeft,
+            Duration::from_millis(200),
+        ))
+        .await;
 }
 
 // Scrolls up the menu by 1 (which decrements the scroll offset)
-fn menu_scroll_up() {
+async fn menu_scroll_up() {
     let menu_status_handle = MenuStatusHandle::new();
 
     let mut scroll = menu_status_handle.scroll();
@@ -306,4 +313,11 @@ fn menu_scroll_up() {
     }
     menu_status_handle.set_scroll(scroll);
     menu_status_handle.set_needs_update(true);
+
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::TemporaryToggle(
+            LED::AmberLeft,
+            Duration::from_millis(200),
+        ))
+        .await;
 }

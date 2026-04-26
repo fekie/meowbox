@@ -427,7 +427,7 @@ async fn safety_startup() {
         .send(LedCommand::SetHigh(LED::ButtonRight))
         .await;
 
-    const SECONDS: u64 = 10;
+    const SECONDS: u64 = 5;
     const INTERVAL_MILLIS: u64 = 250;
 
     let cycles = (SECONDS * 1000) / 250;

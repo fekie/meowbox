@@ -1,13 +1,14 @@
 use adv_shift_registers::wrappers::ShifterPin;
 //use either::Either::Left;
-use embassy_executor::task;
+use embassy_executor::{SendSpawner, task};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
     signal::Signal,
 };
-use embassy_time::Duration;
+use embassy_time::{Duration, Timer};
 use embedded_hal::digital::OutputPin;
 use esp_println::{dbg, println};
+use static_cell::StaticCell;
 
 use crate::hardware::LedShifterType;
 
@@ -22,6 +23,9 @@ pub enum LedCommand {
     Toggle(LED),
     SetHigh(LED),
     SetLow(LED),
+    /// Temporarily toggle an led for a set duration,
+    /// then untoggle it.
+    TemporaryToggle(LED, Duration),
     /// First parameter is the amount of time between each half light
     /// move. The second is the amount of total cycles to do. Third is
     /// direction.
@@ -40,6 +44,7 @@ pub static LED_SHIFTER_CHANNEL: Channel<
 
 /// Represents one of the available LEDs on the board.
 #[repr(usize)]
+#[derive(Clone, Copy)]
 pub enum LED {
     // These are numbered 0-15. If the value is over 8, the next
     // shift register will be selected and the selection bit
@@ -78,6 +83,15 @@ impl PinWrapper {
         self.value = false;
         let _ = self.shifter_pin.set_low();
     }
+}
+
+//static SEND_SPAWNER: StaticCell<SendSpawner> = StaticCell::new();
+
+#[embassy_executor::task(pool_size = 16)]
+async fn delay_toggle(led: LED, duration: Duration) {
+    LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(led)).await;
+    Timer::after(duration).await;
+    LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(led)).await;
 }
 
 #[task]
@@ -150,15 +164,24 @@ pub async fn led_shifter_listener(mut led_shifter: LedShifterType) {
         },
     ];
 
+    let mut send_spawner = SendSpawner::for_current_executor().await;
+
     // initialize all to low
-    execute_command(&mut led_array, LedCommand::SetAllLow);
+    execute_command(
+        &mut send_spawner,
+        &mut led_array,
+        LedCommand::SetAllLow,
+    );
+
+    // Store it somewhere global if needed
+    //SEND_SPAWNER.init(send_spawner);
 
     loop {
         let cmd = LED_SHIFTER_CHANNEL.receive().await;
 
         //println!("but it gets the cmd");
 
-        execute_command(&mut led_array, cmd);
+        execute_command(&mut send_spawner, &mut led_array, cmd);
     }
 
     // for led in LED::iter() {
@@ -186,6 +209,7 @@ pub async fn led_shifter_listener(mut led_shifter: LedShifterType) {
 }
 
 fn execute_command(
+    send_spawner: &mut SendSpawner,
     led_array: &mut [PinWrapper; 16],
     command: LedCommand,
 ) {
@@ -222,6 +246,9 @@ fn execute_command(
         LedCommand::SetLow(led) => {
             let pin = &mut led_array[led as usize];
             pin.set_low();
+        }
+        LedCommand::TemporaryToggle(led, duration) => {
+            send_spawner.spawn(delay_toggle(led, duration)).unwrap();
         }
         LedCommand::CycleALl {
             half_step_time: _,
