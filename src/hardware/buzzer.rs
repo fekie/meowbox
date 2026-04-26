@@ -1,8 +1,11 @@
+use defmt::warn;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio;
+
+use crate::settings;
 
 pub static BUZZER_CH: Channel<
     CriticalSectionRawMutex,
@@ -22,6 +25,11 @@ pub enum BuzzerCommand {
 pub async fn buzzer_listener(mut buzzer_2k3: gpio::Output<'static>) {
     loop {
         let cmd = BUZZER_CH.receive().await;
+
+        if settings::MUTE_SOUNDS {
+            warn!("Sounds are muted.");
+            continue;
+        }
 
         match cmd {
             BuzzerCommand::Play(duration) => {

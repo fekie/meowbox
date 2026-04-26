@@ -33,7 +33,7 @@ use meowbox::{
             dpad_bottom_listener, dpad_left_listener,
             dpad_right_listener, dpad_top_listener,
         },
-        buzzer::buzzer_listener,
+        buzzer::{BUZZER_CH, BuzzerCommand, buzzer_listener},
         led_shifter::{
             self, LED, LED_SHIFTER_CHANNEL, LedCommand,
             led_shifter_listener,
@@ -72,7 +72,6 @@ static DESCRIPTORS: StaticCell<[DmaDescriptor; 8]> =
 static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
 // RUNTIME VARIABLES
-const PLAY_STARTUP_SOUND: bool = false;
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
@@ -221,6 +220,10 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_a,
         non_mutex_peripherals.left_rotary_b,
     ));
+
+    BUZZER_CH
+        .send(BuzzerCommand::Play(Duration::from_millis(50)))
+        .await;
 
     // TODO: spawn this task
 
@@ -458,10 +461,10 @@ async fn safety_startup() {
 
     LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
 
-    if PLAY_STARTUP_SOUND {
-        println!("need to implement startup sound");
-        panic!()
-    }
+    //if PLAY_STARTUP_SOUND {
+    //  println!("need to implement startup sound");
+    //panic!()
+    //}
 }
 
 async fn toggle_reds() {
