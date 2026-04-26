@@ -7,11 +7,15 @@ use esp_hal::gpio;
 pub static BUZZER_CH: Channel<
     CriticalSectionRawMutex,
     BuzzerCommand,
-    8,
+    32,
 > = Channel::new();
+
+const CLICK_DURATION: Duration = Duration::from_micros(1500);
 
 pub enum BuzzerCommand {
     Play(Duration),
+    /// Make a clicking sound
+    Click,
 }
 
 #[embassy_executor::task]
@@ -22,6 +26,9 @@ pub async fn buzzer_listener(mut buzzer_2k3: gpio::Output<'static>) {
         match cmd {
             BuzzerCommand::Play(duration) => {
                 play(&mut buzzer_2k3, duration).await;
+            }
+            BuzzerCommand::Click => {
+                play(&mut buzzer_2k3, CLICK_DURATION).await;
             }
         }
     }

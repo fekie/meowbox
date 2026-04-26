@@ -112,7 +112,7 @@ impl Meowbox {
         // let menu_offset = CURRENT_MENU_SCROLL
         //     .load(core::sync::atomic::Ordering::SeqCst);
 
-        for general_item in self
+        let mut current_items = self
             .resources
             .menu_resoures
             .menu_tree
@@ -122,7 +122,11 @@ impl Meowbox {
             // we only show the first 7, because this is all that fits
             // on the screen
             .take(7)
-        {
+            .peekable();
+
+        let top = **current_items.peek().unwrap();
+
+        for general_item in current_items {
             // let name = match general_item {
             //     MenuGeneralItem::MenuProgram(x) => {
             //         String::from(x.as_str())
@@ -324,6 +328,14 @@ async fn handle_inputs() -> Result<(), KillSignal> {
                 Duration::from_millis(200),
             ))
             .await;
+    }
+
+    let total_changes = left_rotary_encoder_cw
+        + dpad_bottom
+        + left_rotary_encoder_ccw
+        + dpad_top;
+    for _ in 0..total_changes {
+        BUZZER_CH.send(BuzzerCommand::Click).await;
     }
 
     let old_led_scroll_index =

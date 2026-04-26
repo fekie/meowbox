@@ -68,7 +68,7 @@ impl MenuStatusHandle {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MenuFolder {
     Tests,
 }
@@ -81,7 +81,7 @@ impl MenuFolder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MenuProgram {
     LightShow,
     Beeper,
@@ -116,7 +116,7 @@ impl MenuProgram {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MenuGeneralItem {
     MenuProgram(MenuProgram),
     MenuFolder(MenuFolder),
