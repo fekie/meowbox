@@ -143,6 +143,10 @@ pub struct NonMutexPeripherals {
     pub buzzer_2k3: Output<'static>,
     pub left_button: Input<'static>,
     pub right_button: Input<'static>,
+    pub dpad_bottom: Input<'static>,
+    pub dpad_top: Input<'static>,
+    pub dpad_left: Input<'static>,
+    pub dpad_right: Input<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -161,6 +165,12 @@ pub async fn init_peripherals(
     let left_button = Input::new(peripherals.GPIO3, pull_up_config);
 
     let right_button = Input::new(peripherals.GPIO4, pull_up_config);
+
+    let dpad_bottom = Input::new(peripherals.GPIO5, pull_up_config);
+    let dpad_top = Input::new(peripherals.GPIO8, pull_up_config);
+
+    let dpad_left = Input::new(peripherals.GPIO6, pull_up_config);
+    let dpad_right = Input::new(peripherals.GPIO7, pull_up_config);
 
     // let left_button_light = Output::new(
     //     peripherals.GPIO4,
@@ -385,5 +395,9 @@ pub async fn init_peripherals(
         buzzer_2k3,
         left_button,
         right_button,
+        dpad_bottom,
+        dpad_top,
+        dpad_left,
+        dpad_right,
     }
 }

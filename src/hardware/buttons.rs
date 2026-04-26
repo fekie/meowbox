@@ -1,3 +1,4 @@
+use defmt::println;
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio;
@@ -27,6 +28,54 @@ pub async fn button_right_listener(
         right_button.wait_for_falling_edge().await;
 
         INPUT_CHANNEL.send(input_listener::Input::ButtonRight).await;
+
+        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+    }
+}
+
+#[task]
+pub async fn dpad_bottom_listener(
+    mut dpad_bottom: gpio::Input<'static>,
+) {
+    loop {
+        dpad_bottom.wait_for_falling_edge().await;
+
+        INPUT_CHANNEL.send(input_listener::Input::DpadBottom).await;
+
+        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+    }
+}
+
+#[task]
+pub async fn dpad_top_listener(mut dpad_top: gpio::Input<'static>) {
+    loop {
+        dpad_top.wait_for_falling_edge().await;
+
+        INPUT_CHANNEL.send(input_listener::Input::DpadTop).await;
+
+        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+    }
+}
+
+#[task]
+pub async fn dpad_left_listener(mut dpad_left: gpio::Input<'static>) {
+    loop {
+        dpad_left.wait_for_falling_edge().await;
+
+        INPUT_CHANNEL.send(input_listener::Input::DpadLeft).await;
+
+        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+    }
+}
+
+#[task]
+pub async fn dpad_right_listener(
+    mut dpad_right: gpio::Input<'static>,
+) {
+    loop {
+        dpad_right.wait_for_falling_edge().await;
+
+        INPUT_CHANNEL.send(input_listener::Input::DpadRight).await;
 
         Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
     }

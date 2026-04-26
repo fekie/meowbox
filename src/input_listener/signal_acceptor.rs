@@ -50,6 +50,19 @@ impl InputListener {
             Input::ButtonRight => {
                 super::BUTTON_RIGHT.fetch_add(1, SeqCst);
             }
+
+            Input::DpadBottom => {
+                super::DPAD_BOTTOM.fetch_add(1, SeqCst);
+            }
+            Input::DpadTop => {
+                super::DPAD_TOP.fetch_add(1, SeqCst);
+            }
+            Input::DpadLeft => {
+                super::DPAD_LEFT.fetch_add(1, SeqCst);
+            }
+            Input::DpadRight => {
+                super::DPAD_RIGHT.fetch_add(1, SeqCst);
+            }
         }
     }
 

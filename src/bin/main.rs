@@ -28,7 +28,10 @@ use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{
         self,
-        buttons::{button_left_listener, button_right_listener},
+        buttons::{
+            button_left_listener, button_right_listener,
+            dpad_bottom_listener,
+        },
         buzzer::buzzer_listener,
         led_shifter::{
             self, LED, LED_SHIFTER_CHANNEL, LedCommand,
@@ -175,6 +178,10 @@ async fn main(spawner: Spawner) -> ! {
 
     // DO NOT REMOVE
     safety_startup().await;
+
+    let _ = spawner.spawn(dpad_bottom_listener(
+        non_mutex_peripherals.dpad_bottom,
+    ));
 
     let _ = spawner.spawn(button_left_listener(
         non_mutex_peripherals.left_button,

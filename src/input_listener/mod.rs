@@ -56,6 +56,11 @@ pub static ROTARY_ENCODER_ROTATE_RIGHT_CCW: AtomicU8 =
 pub static BUTTON_LEFT: AtomicU8 = AtomicU8::new(0);
 pub static BUTTON_RIGHT: AtomicU8 = AtomicU8::new(0);
 
+pub static DPAD_BOTTOM: AtomicU8 = AtomicU8::new(0);
+pub static DPAD_TOP: AtomicU8 = AtomicU8::new(0);
+pub static DPAD_LEFT: AtomicU8 = AtomicU8::new(0);
+pub static DPAD_RIGHT: AtomicU8 = AtomicU8::new(0);
+
 /// This is marked as Some with the specified input if there is
 /// an external source waiting on a signal. It basically says
 /// to start "forwarding" a signal to a waiter, instead of
@@ -123,6 +128,10 @@ pub enum Input {
     RotaryEncoderRotateRight(Direction),
     ButtonLeft,
     ButtonRight,
+    DpadBottom,
+    DpadTop,
+    DpadLeft,
+    DpadRight,
 }
 
 /// If this is found in a Result, the program should exit and change
@@ -194,6 +203,10 @@ impl InputListener {
 
             Input::ButtonLeft => &BUTTON_LEFT,
             Input::ButtonRight => &BUTTON_RIGHT,
+            Input::DpadBottom => &DPAD_BOTTOM,
+            Input::DpadTop => &DPAD_TOP,
+            Input::DpadLeft => &DPAD_LEFT,
+            Input::DpadRight => &DPAD_RIGHT,
         };
 
         if take_total {
