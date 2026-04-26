@@ -19,7 +19,7 @@ use core::{
     sync::atomic::{AtomicBool, AtomicU8, Ordering::SeqCst},
 };
 
-use defmt::dbg;
+use defmt::{dbg, println};
 use embassy_executor::task;
 use embassy_futures::select::Either;
 use embassy_sync::{
@@ -90,6 +90,8 @@ pub struct InputListener;
 /// Initializes listener and starts listening for inputs.
 #[task]
 pub async fn start_input_listener_listener() {
+    println!("cmon, work");
+
     loop {
         let input = INPUT_CHANNEL.receive().await;
 
@@ -122,6 +124,7 @@ pub enum Input {
 
 /// If this is found in a Result, the program should exit and change
 /// state
+#[derive(Debug)]
 pub struct KillSignal;
 
 impl InputListener {

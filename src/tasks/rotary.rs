@@ -3,7 +3,7 @@ use defmt::println;
 use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
-use esp_hal::gpio::Input;
+use esp_hal::gpio;
 use esp_println::dbg;
 use rotary_encoder_embedded::{
     Direction, quadrature::QuadratureTableMode,
@@ -13,12 +13,16 @@ use super::{
     BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL,
     LEDRotationParams, hardware,
 };
+use crate::{input_listener, input_listener::Input};
 use crate::{
     //hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
+    input_listener::{EXTERNAL_WAIT_FOR_SIGNAL, INPUT_CHANNEL},
     leds::LightRing,
     menu::MenuStatusHandle,
     tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
 };
+
+const ROTARY_SW_DEBOUNCE_MS: u64 = 200;
 
 #[task]
 pub async fn rotary_switch_left_event(
@@ -40,16 +44,22 @@ pub async fn rotary_switch_left_event(
         //let params = LEDRotationParams::default();
         //LED_ROTATION_SIGNAL.signal(params);
 
-        buzzer.lock().await.as_mut().unwrap().set_high();
+        //buzzer.lock().await.as_mut().unwrap().set_high();
 
         println!("wah");
+        dbg!("wuh");
 
-        Timer::after(Duration::from_millis(100)).await;
+        INPUT_CHANNEL
+            .send(input_listener::Input::RotaryEncoderPressLeft)
+            .await;
+
+        Timer::after(Duration::from_millis(ROTARY_SW_DEBOUNCE_MS))
+            .await;
 
         //buzzer.lock().await.as_mut().unwrap().set_high();
         //Timer::after(Duration::from_millis(200)).await;
         //buzzer.lock().await.as_mut().unwrap().set_low();
-        buzzer.lock().await.as_mut().unwrap().set_low();
+        //buzzer.lock().await.as_mut().unwrap().set_low();
     }
 }
 
@@ -104,8 +114,8 @@ pub async fn rotary_switch_right_event(
 
 #[task]
 pub async fn left_rotary_rotation_watcher(
-    left_rotary_a: Input<'static>,
-    left_rotary_b: Input<'static>,
+    left_rotary_a: gpio::Input<'static>,
+    left_rotary_b: gpio::Input<'static>,
 ) {
     //let mut light_ring = LightRing::new().await;
 
@@ -143,8 +153,8 @@ pub async fn left_rotary_rotation_watcher(
 
 #[task]
 pub async fn right_rotary_rotation_watcher(
-    right_rotary_a: Input<'static>,
-    right_rotary_b: Input<'static>,
+    right_rotary_a: gpio::Input<'static>,
+    right_rotary_b: gpio::Input<'static>,
 ) {
     let neopixel_handle = NeoPixelHandle::new();
 

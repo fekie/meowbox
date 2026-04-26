@@ -1,16 +1,19 @@
-use defmt::info;
+use defmt::{dbg, info};
 use embassy_time::{Duration, Timer};
+use esp_println::println;
 use heapless::String;
 
 use super::{Meowbox, State};
 use crate::{
     hardware::{
+        BUZZER_2K3,
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
             MonoDisplayCommand,
         },
     },
+    input_listener::{Input, InputListener},
     menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle},
     states::{ErrorStateType, MenuState, Stage},
     tasks::all_leds_off,
@@ -67,6 +70,16 @@ impl Meowbox {
             // Display stuff here
             //info!("display menu");
         }
+
+        let left_rotary_encoder_pressed = InputListener::take_input(
+            Input::RotaryEncoderPressLeft,
+            true,
+        )
+        .unwrap()
+        .unwrap_or_default()
+            != 0;
+
+        if left_rotary_encoder_pressed {}
 
         let menu_status_handle = MenuStatusHandle::new();
 
@@ -143,7 +156,7 @@ impl Meowbox {
             //     .await;
         }
 
-        Timer::after(Duration::from_micros(100)).await;
+        Timer::after(Duration::from_millis(1)).await;
     }
 
     /// This method is called if the state is in shutdown. Shutdown

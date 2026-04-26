@@ -146,8 +146,6 @@ async fn main(spawner: Spawner) -> ! {
     //     &hardware::BUZZER,
     // ));
 
-    //let _ = spawner.spawn(start_input_listener_listener());
-
     let _ = spawner.spawn(rotary_switch_left_event(
         &hardware::ROTARY_SWITCH_LEFT,
         &hardware::BUZZER_2K3,
@@ -182,6 +180,8 @@ async fn main(spawner: Spawner) -> ! {
 
     // DO NOT REMOVE
     safety_startup().await;
+
+    let _ = spawner.spawn(start_input_listener_listener());
 
     let _ = spawner.spawn(right_rotary_rotation_watcher(
         non_mutex_peripherals.right_rotary_a,
