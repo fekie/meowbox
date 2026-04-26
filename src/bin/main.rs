@@ -30,7 +30,8 @@ use meowbox::{
         self,
         buttons::{
             button_left_listener, button_right_listener,
-            dpad_bottom_listener,
+            dpad_bottom_listener, dpad_left_listener,
+            dpad_right_listener, dpad_top_listener,
         },
         buzzer::buzzer_listener,
         led_shifter::{
@@ -182,6 +183,15 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner.spawn(dpad_bottom_listener(
         non_mutex_peripherals.dpad_bottom,
     ));
+
+    let _ = spawner
+        .spawn(dpad_top_listener(non_mutex_peripherals.dpad_top));
+
+    let _ = spawner
+        .spawn(dpad_left_listener(non_mutex_peripherals.dpad_left));
+
+    let _ = spawner
+        .spawn(dpad_right_listener(non_mutex_peripherals.dpad_right));
 
     let _ = spawner.spawn(button_left_listener(
         non_mutex_peripherals.left_button,

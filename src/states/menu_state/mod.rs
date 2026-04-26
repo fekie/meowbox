@@ -47,6 +47,14 @@ impl Meowbox {
             .send(LedCommand::SetHigh(LED::AmberLeft))
             .await;
 
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::SetHigh(LED::DpadBottom))
+            .await;
+
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::SetHigh(LED::DpadTop))
+            .await;
+
         MONO_DISPLAY_CH
             .send(MonoDisplayCommand::SwitchToTerminal)
             .await;
@@ -254,10 +262,14 @@ async fn handle_inputs() -> Result<(), KillSignal> {
     let left_rotary_encoder_cw = InputListener::take_input(
         Input::RotaryEncoderRotateLeft(Direction::Clockwise),
         true,
-    )?;
+    )?
+    .unwrap_or_default();
 
-    let scroll_down_amount =
-        left_rotary_encoder_cw.unwrap_or_default();
+    let dpad_bottom =
+        InputListener::take_input(Input::DpadBottom, true)?
+            .unwrap_or_default();
+
+    let scroll_down_amount = left_rotary_encoder_cw + dpad_bottom;
 
     for _ in 0..scroll_down_amount {
         menu_scroll_down().await;
@@ -266,10 +278,13 @@ async fn handle_inputs() -> Result<(), KillSignal> {
     let left_rotary_encoder_ccw = InputListener::take_input(
         Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
         true,
-    )?;
+    )?
+    .unwrap_or_default();
 
-    let scroll_up_amount =
-        left_rotary_encoder_ccw.unwrap_or_default();
+    let dpad_top = InputListener::take_input(Input::DpadTop, true)?
+        .unwrap_or_default();
+
+    let scroll_up_amount = left_rotary_encoder_ccw + dpad_top;
     for _ in 0..scroll_up_amount {
         menu_scroll_up().await;
     }

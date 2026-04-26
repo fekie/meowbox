@@ -6,6 +6,7 @@ use esp_hal::gpio;
 use crate::{input_listener, input_listener::INPUT_CHANNEL};
 
 const BUTTON_DEBOUNCE_MS: u64 = 200;
+const DPAD_DEBOUNCE_MS: u64 = 100;
 
 #[task]
 pub async fn button_left_listener(
@@ -42,7 +43,7 @@ pub async fn dpad_bottom_listener(
 
         INPUT_CHANNEL.send(input_listener::Input::DpadBottom).await;
 
-        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+        Timer::after(Duration::from_millis(DPAD_DEBOUNCE_MS)).await;
     }
 }
 
@@ -53,7 +54,7 @@ pub async fn dpad_top_listener(mut dpad_top: gpio::Input<'static>) {
 
         INPUT_CHANNEL.send(input_listener::Input::DpadTop).await;
 
-        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+        Timer::after(Duration::from_millis(DPAD_DEBOUNCE_MS)).await;
     }
 }
 
@@ -64,7 +65,7 @@ pub async fn dpad_left_listener(mut dpad_left: gpio::Input<'static>) {
 
         INPUT_CHANNEL.send(input_listener::Input::DpadLeft).await;
 
-        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+        Timer::after(Duration::from_millis(DPAD_DEBOUNCE_MS)).await;
     }
 }
 
@@ -77,6 +78,6 @@ pub async fn dpad_right_listener(
 
         INPUT_CHANNEL.send(input_listener::Input::DpadRight).await;
 
-        Timer::after(Duration::from_millis(BUTTON_DEBOUNCE_MS)).await;
+        Timer::after(Duration::from_millis(DPAD_DEBOUNCE_MS)).await;
     }
 }
