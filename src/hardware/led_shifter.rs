@@ -87,7 +87,7 @@ impl PinWrapper {
 
 //static SEND_SPAWNER: StaticCell<SendSpawner> = StaticCell::new();
 
-#[embassy_executor::task(pool_size = 16)]
+#[embassy_executor::task(pool_size = 64)]
 async fn delay_toggle(led: LED, duration: Duration) {
     LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(led)).await;
     Timer::after(duration).await;

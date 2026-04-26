@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+
 use defmt::{dbg, info};
 use embassy_time::{Duration, Timer};
 use esp_println::println;
@@ -19,6 +21,8 @@ use crate::{
     states::{ErrorStateType, MenuState, Stage},
     tasks::all_leds_off,
 };
+
+pub static LED_SCROLL_INDEX: AtomicUsize = AtomicUsize::new(0);
 
 // Light Ring
 impl Meowbox {
@@ -250,10 +254,11 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         true,
     )?;
 
-    if let Some(amount) = left_rotary_encoder_cw {
-        for _ in 0..amount {
-            menu_scroll_down().await;
-        }
+    let scroll_down_amount =
+        left_rotary_encoder_cw.unwrap_or_default();
+
+    for _ in 0..scroll_down_amount {
+        menu_scroll_down().await;
     }
 
     let left_rotary_encoder_ccw = InputListener::take_input(
@@ -261,11 +266,24 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         true,
     )?;
 
-    if let Some(amount) = left_rotary_encoder_ccw {
-        for _ in 0..amount {
-            menu_scroll_up().await;
-        }
+    let scroll_up_amount =
+        left_rotary_encoder_ccw.unwrap_or_default();
+    for _ in 0..scroll_up_amount {
+        menu_scroll_up().await;
     }
+
+    let old_led_scroll_index =
+        LED_SCROLL_INDEX.load(core::sync::atomic::Ordering::SeqCst);
+
+    let new_led_scroll_index = (old_led_scroll_index as i8
+        + scroll_down_amount as i8
+        - scroll_up_amount as i8)
+        .rem_euclid(6) as usize;
+
+    update_led_scroll_bar(old_led_scroll_index, new_led_scroll_index)
+        .await;
+
+    LED_SCROLL_INDEX.store(new_led_scroll_index, SeqCst);
 
     let button_left =
         InputListener::take_input(Input::ButtonLeft, true)?;
@@ -284,6 +302,38 @@ async fn handle_inputs() -> Result<(), KillSignal> {
     Ok(())
 }
 
+/// Converts an index to an LED. A mapping is created here because
+/// the hardware mappings are not neccessarily in order.
+const LED_SCROLL_BAR_MAPPING: [LED; 6] = [
+    LED::Red,
+    LED::Orange,
+    LED::YellowCenter,
+    LED::Green,
+    LED::Blue,
+    LED::White,
+];
+
+const LED_SCROLL_BAR_TOGGLE_TIME: Duration =
+    Duration::from_millis(100);
+
+async fn update_led_scroll_bar(
+    old_bar_index: usize,
+    new_bar_index: usize,
+) {
+    if old_bar_index == new_bar_index {
+        return;
+    }
+
+    let led = LED_SCROLL_BAR_MAPPING[new_bar_index];
+
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::TemporaryToggle(
+            led,
+            LED_SCROLL_BAR_TOGGLE_TIME,
+        ))
+        .await;
+}
+
 // Scrolls down the menu by 1 (which increments the scroll offset)
 async fn menu_scroll_down() {
     let menu_status_handle = MenuStatusHandle::new();
@@ -296,7 +346,7 @@ async fn menu_scroll_down() {
     LED_SHIFTER_CHANNEL
         .send(LedCommand::TemporaryToggle(
             LED::AmberLeft,
-            Duration::from_millis(200),
+            Duration::from_millis(10),
         ))
         .await;
 }
