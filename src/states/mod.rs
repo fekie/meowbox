@@ -5,11 +5,9 @@ use embassy_executor::task;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal,
 };
+use menu_state::menu::MenuResources;
 
-use crate::{
-    leds::LightRingState, menu::MenuResources,
-    physics::PhysicsResources,
-};
+use crate::{leds::LightRingState, physics::PhysicsResources};
 
 pub mod error_state;
 pub mod flow_field;

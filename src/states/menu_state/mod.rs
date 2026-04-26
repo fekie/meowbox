@@ -4,6 +4,7 @@ use defmt::{dbg, info};
 use embassy_time::{Duration, Timer};
 use esp_println::println;
 use heapless::String;
+use menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle};
 use rotary_encoder_embedded::Direction;
 
 use super::{Meowbox, State};
@@ -17,10 +18,11 @@ use crate::{
         },
     },
     input_listener::{Input, InputListener, KillSignal},
-    menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle},
     states::{ErrorStateType, MenuState, Stage},
     tasks::all_leds_off,
 };
+
+pub mod menu;
 
 pub static LED_SCROLL_INDEX: AtomicUsize = AtomicUsize::new(0);
 
