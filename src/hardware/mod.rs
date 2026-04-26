@@ -137,7 +137,7 @@ pub struct NonMutexPeripherals {
     pub flash: FLASH<'static>,
     // it has a buffer size of one because there is only one neopixel
     //pub neopixel: SmartLedsAdapter<'static, 25>,
-    //pub i2s_speaker: I2s<'static, esp_hal::Async>,
+    pub speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
     //pub large_display: LargeDisplayType,
     pub buzzer_2k3: Output<'static>,
@@ -277,14 +277,14 @@ pub async fn init_peripherals(
         peripherals.GPIO21,
     );
 
-    // let i2s_speaker = speaker::init(
-    //     peripherals.I2S0,
-    //     peripherals.DMA_CH0,
-    //     peripherals.GPIO37,
-    //     peripherals.GPIO38,
-    //     peripherals.GPIO39,
-    //     peripherals.GPIO40,
-    // );
+    let speaker = speaker::init(
+        peripherals.I2S0,
+        peripherals.DMA_CH0,
+        peripherals.GPIO39,
+        peripherals.GPIO40,
+        peripherals.GPIO41,
+        peripherals.GPIO42,
+    );
 
     //Timer::after(Duration::from_millis(1000)).await;
 
@@ -347,7 +347,6 @@ pub async fn init_peripherals(
         OutputConfig::default(),
     );
 
-    // --- SPI ---
     let spi = Spi::new(
         peripherals.SPI2,
         spi::master::Config::default()
@@ -360,7 +359,6 @@ pub async fn init_peripherals(
     .with_miso(miso)
     .with_cs(cs);
 
-    // --- backlight ---
     let bl_pin = Output::new(
         peripherals.GPIO46,
         Level::Low,
@@ -390,6 +388,7 @@ pub async fn init_peripherals(
         right_rotary_b,
         flash, //simple_speaker,
         //neopixel,
+        speaker,
         shifter, /*i2s_speaker,
                   *large_display, */
         buzzer_2k3,

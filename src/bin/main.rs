@@ -221,6 +221,9 @@ async fn main(spawner: Spawner) -> ! {
         non_mutex_peripherals.left_rotary_b,
     ));
 
+    let _ =
+        spawner.spawn(speaker_task(non_mutex_peripherals.speaker));
+
     BUZZER_CH
         .send(BuzzerCommand::Play(Duration::from_millis(50)))
         .await;

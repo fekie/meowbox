@@ -15,7 +15,9 @@ use esp_hal::{
         interconnect::PeripheralOutput as _,
     },
     i2s::master::{Config, DataFormat, I2s, I2sTx},
-    peripherals::{DMA_CH0, GPIO37, GPIO38, GPIO39, GPIO40, I2S0},
+    peripherals::{
+        DMA_CH0, GPIO37, GPIO38, GPIO39, GPIO40, GPIO41, GPIO42, I2S0,
+    },
     rng::Rng,
     time::Rate,
 };
@@ -67,10 +69,10 @@ static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 pub(super) fn init(
     i2s0: I2S0<'static>,
     dma: DMA_CH0<'static>,
-    gpio37: GPIO37<'static>,
-    gpio38: GPIO38<'static>,
-    gpio39: GPIO39<'static>,
-    gpio40: GPIO40<'static>,
+    sd: GPIO39<'static>,
+    din: GPIO40<'static>,
+    bclk: GPIO41<'static>,
+    lrclk: GPIO42<'static>,
 ) -> SpeakerType {
     // for some really weird reason, sd on this chip stands for
     // shutdown, and not serial data (which is what the i2s
@@ -78,12 +80,12 @@ pub(super) fn init(
     //
     // enable the amplifier by setting the shutdown pin to high
     let _shutdown =
-        Output::new(gpio37, Level::High, OutputConfig::default());
+        Output::new(sd, Level::High, OutputConfig::default());
 
     // connect physical output pins to the i2s signal pins
-    gpio38.connect_peripheral_to_output(OutputSignal::I2S0O_SD);
-    gpio39.connect_peripheral_to_output(OutputSignal::I2S0O_BCK);
-    gpio40.connect_peripheral_to_output(OutputSignal::I2S0O_WS);
+    din.connect_peripheral_to_output(OutputSignal::I2S0O_SD);
+    bclk.connect_peripheral_to_output(OutputSignal::I2S0O_BCK);
+    lrclk.connect_peripheral_to_output(OutputSignal::I2S0O_WS);
 
     // make I2S config. sample rate of 44.1kHz
     let config = Config::default()
@@ -151,7 +153,7 @@ fn play_sine440hz(
 
     loop {
         for chunk in buffer.chunks_exact_mut(4) {
-            let sample = (phase.sin() * 8000.0) as i16;
+            let sample = (phase.sin() * 16000.0) as i16;
 
             // stereo
             chunk[0] = sample as u8;

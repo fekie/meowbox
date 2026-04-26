@@ -17,6 +17,7 @@ use crate::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
             MonoDisplayCommand,
         },
+        speaker::{SPEAKER_CHANNEL, SpeakerCommand},
     },
     input_listener::{Input, InputListener, KillSignal},
     states::{ErrorStateType, MenuState, Stage},
@@ -355,6 +356,9 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         InputListener::take_input(Input::ButtonLeft, true)?;
 
     if button_left.is_some() {
+        SPEAKER_CHANNEL
+            .send(SpeakerCommand::Sine440Hz(Duration::from_secs(5)))
+            .await;
         println!("hit left button");
     }
 
