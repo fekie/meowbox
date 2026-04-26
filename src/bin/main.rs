@@ -28,6 +28,7 @@ use esp_storage::FlashStorage;
 use meowbox::{
     hardware::{
         self,
+        buzzer::buzzer_listener,
         led_shifter::{
             self, LED, LED_SHIFTER_CHANNEL, LedCommand,
             led_shifter_listener,
@@ -146,16 +147,6 @@ async fn main(spawner: Spawner) -> ! {
     //     &hardware::BUZZER,
     // ));
 
-    let _ = spawner.spawn(rotary_switch_left_event(
-        &hardware::ROTARY_SWITCH_LEFT,
-        &hardware::BUZZER_2K3,
-    ));
-
-    let _ = spawner.spawn(rotary_switch_right_event(
-        &hardware::ROTARY_SWITCH_RIGHT,
-        &hardware::BUZZER_400,
-    ));
-
     //let _ = spawner.spawn(play_sequence_listener(&
     // hardware::BUZZER));
 
@@ -178,8 +169,21 @@ async fn main(spawner: Spawner) -> ! {
     MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
     MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
 
+    let _ = spawner
+        .spawn(buzzer_listener(non_mutex_peripherals.buzzer_2k3));
+
     // DO NOT REMOVE
     safety_startup().await;
+
+    let _ = spawner.spawn(rotary_switch_left_event(
+        &hardware::ROTARY_SWITCH_LEFT,
+        //&hardware::BUZZER_2K3,
+    ));
+
+    let _ = spawner.spawn(rotary_switch_right_event(
+        &hardware::ROTARY_SWITCH_RIGHT,
+        //&hardware::BUZZER_400,
+    ));
 
     let _ = spawner.spawn(start_input_listener_listener());
 

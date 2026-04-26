@@ -6,7 +6,7 @@ use heapless::String;
 use super::{Meowbox, State};
 use crate::{
     hardware::{
-        BUZZER_2K3,
+        buzzer::{BUZZER_CH, BuzzerCommand},
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
@@ -79,7 +79,12 @@ impl Meowbox {
         .unwrap_or_default()
             != 0;
 
-        if left_rotary_encoder_pressed {}
+        if left_rotary_encoder_pressed {
+            //println!("AAAA WHY THIS TRIGGER");
+            BUZZER_CH
+                .send(BuzzerCommand::Play(Duration::from_millis(50)))
+                .await;
+        }
 
         let menu_status_handle = MenuStatusHandle::new();
 

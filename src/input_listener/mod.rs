@@ -90,8 +90,6 @@ pub struct InputListener;
 /// Initializes listener and starts listening for inputs.
 #[task]
 pub async fn start_input_listener_listener() {
-    println!("cmon, work");
-
     loop {
         let input = INPUT_CHANNEL.receive().await;
 

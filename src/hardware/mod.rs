@@ -33,6 +33,7 @@ use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
+pub mod buzzer;
 pub mod large_display;
 pub mod led_shifter;
 pub mod leds;
@@ -54,15 +55,8 @@ pub type ButtonLEDType =
 
 pub type BuzzerType =
     Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
-pub static BUZZER_400: BuzzerType = Mutex::new(None);
-pub static BUZZER_2K3: BuzzerType = Mutex::new(None);
-
-pub type PBuzzerType =
-    Mutex<CriticalSectionRawMutex, Option<Output<'static>>>;
-pub static PBUZZER_TOP_LEFT: PBuzzerType = Mutex::new(None);
-pub static PBUZZER_TOP_RIGHT: PBuzzerType = Mutex::new(None);
-pub static PBUZZER_BOTTOM_LEFT: PBuzzerType = Mutex::new(None);
-pub static PBUZZER_BOTTOM_RIGHT: PBuzzerType = Mutex::new(None);
+//pub static BUZZER_400: BuzzerType = Mutex::new(None);
+//pub static BUZZER_2K3: BuzzerType = Mutex::new(None);
 
 pub type RotarySwitchType =
     Mutex<CriticalSectionRawMutex, Option<Input<'static>>>;
@@ -145,6 +139,7 @@ pub struct NonMutexPeripherals {
     //pub i2s_speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
     //pub large_display: LargeDisplayType,
+    pub buzzer_2k3: Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -258,8 +253,8 @@ pub async fn init_peripherals(
         *(LEFT_BUTTON.lock().await) = Some(left_button);
         //*(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
         //*(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
-        *(BUZZER_400.lock().await) = Some(buzzer_400);
-        *(BUZZER_2K3.lock().await) = Some(buzzer_2k3);
+        //*(BUZZER_400.lock().await) = Some(buzzer_400);
+        //*(BUZZER_2K3.lock().await) = Some(buzzer_2k3);
         *(ROTARY_SWITCH_LEFT.lock().await) = Some(rotary_switch_left);
         *(ROTARY_SWITCH_RIGHT.lock().await) =
             Some(rotary_switch_right);
@@ -416,5 +411,6 @@ pub async fn init_peripherals(
         //neopixel,
         shifter, /*i2s_speaker,
                   *large_display, */
+        buzzer_2k3,
     }
 }

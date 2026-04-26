@@ -87,6 +87,7 @@ pub async fn display_task(mut display: MonoDisplay) {
         // do a check to see if the command was to switch operating
         // modes (which requires ownership). Otherwise, execute the
         // command as normal.
+
         match cmd {
             MonoDisplayCommand::SwitchToGraphics => {
                 display = display.to_graphics().await;

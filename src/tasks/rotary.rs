@@ -27,7 +27,7 @@ const ROTARY_SW_DEBOUNCE_MS: u64 = 200;
 #[task]
 pub async fn rotary_switch_left_event(
     rotary_switch: &'static hardware::RotarySwitchType,
-    buzzer: &'static hardware::BuzzerType,
+    //buzzer: &'static hardware::BuzzerType,
     //led: &'static hardware::ButtonLEDType,
 ) {
     // TODO: basically make the buzzer beeping a separate task, that
@@ -45,9 +45,6 @@ pub async fn rotary_switch_left_event(
         //LED_ROTATION_SIGNAL.signal(params);
 
         //buzzer.lock().await.as_mut().unwrap().set_high();
-
-        println!("wah");
-        dbg!("wuh");
 
         INPUT_CHANNEL
             .send(input_listener::Input::RotaryEncoderPressLeft)
@@ -67,7 +64,7 @@ pub async fn rotary_switch_left_event(
 #[task]
 pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
-    buzzer: &'static hardware::BuzzerType,
+    //buzzer: &'static hardware::BuzzerType,
 ) {
     let neopixel_handle = NeoPixelHandle::new();
 
@@ -85,7 +82,7 @@ pub async fn rotary_switch_right_event(
             .wait_for_falling_edge()
             .await;
 
-        buzzer.lock().await.as_mut().unwrap().set_high();
+        //buzzer.lock().await.as_mut().unwrap().set_high();
 
         //neopixel_handle.cycle_all_hues(3).await;
 
@@ -108,7 +105,7 @@ pub async fn rotary_switch_right_event(
         //buzzer.lock().await.as_mut().unwrap().set_high();
         //Timer::after(Duration::from_millis(200)).await;
         //buzzer.lock().await.as_mut().unwrap().set_low();
-        buzzer.lock().await.as_mut().unwrap().set_low();
+        //buzzer.lock().await.as_mut().unwrap().set_low();
     }
 }
 
