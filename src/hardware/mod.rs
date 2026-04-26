@@ -33,6 +33,7 @@ use smart_leds::{RGB8, SmartLedsWrite};
 use ssd1306::{I2CDisplayInterface, Ssd1306Async, prelude::*};
 use static_cell::StaticCell;
 
+pub mod buttons;
 pub mod buzzer;
 pub mod large_display;
 pub mod led_shifter;
@@ -140,6 +141,8 @@ pub struct NonMutexPeripherals {
     pub shifter: LedShifterType,
     //pub large_display: LargeDisplayType,
     pub buzzer_2k3: Output<'static>,
+    pub left_button: Input<'static>,
+    pub right_button: Input<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -170,12 +173,6 @@ pub async fn init_peripherals(
     //     output_config_default,
     // );
 
-    let buzzer_400 = Output::new(
-        peripherals.GPIO15,
-        Level::Low,
-        output_config_default,
-    );
-
     let buzzer_2k3 = Output::new(
         peripherals.GPIO16,
         Level::Low,
@@ -187,32 +184,6 @@ pub async fn init_peripherals(
 
     let rotary_switch_right =
         Input::new(peripherals.GPIO14, pull_up_config);
-
-    // let red_led = Output::new(
-    //     peripherals.GPIO41,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-    // let green_led = Output::new(
-    //     peripherals.GPIO15,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-    // let blue_led = Output::new(
-    //     peripherals.GPIO14,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-    // let yellow_led = Output::new(
-    //     peripherals.GPIO9,
-    //     Level::Low,
-    //     output_config_default,
-    // );
-    // let white_led = Output::new(
-    //     peripherals.GPIO11,
-    //     Level::Low,
-    //     output_config_default,
-    // );
 
     let reg_rclk = Output::new(
         peripherals.GPIO0,
@@ -249,8 +220,8 @@ pub async fn init_peripherals(
         Input::new(peripherals.GPIO12, pull_up_config);
 
     {
-        *(RIGHT_BUTTON.lock().await) = Some(right_button);
-        *(LEFT_BUTTON.lock().await) = Some(left_button);
+        //*(RIGHT_BUTTON.lock().await) = Some(right_button);
+        //*(LEFT_BUTTON.lock().await) = Some(left_button);
         //*(RIGHT_BUTTON_LED.lock().await) = Some(right_button_light);
         //*(LEFT_BUTTON_LED.lock().await) = Some(left_button_light);
         //*(BUZZER_400.lock().await) = Some(buzzer_400);
@@ -412,5 +383,7 @@ pub async fn init_peripherals(
         shifter, /*i2s_speaker,
                   *large_display, */
         buzzer_2k3,
+        left_button,
+        right_button,
     }
 }

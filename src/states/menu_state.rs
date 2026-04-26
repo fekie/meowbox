@@ -267,6 +267,20 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         }
     }
 
+    let button_left =
+        InputListener::take_input(Input::ButtonLeft, true)?;
+
+    if button_left.is_some() {
+        println!("hit left button");
+    }
+
+    let button_right =
+        InputListener::take_input(Input::ButtonRight, true)?;
+
+    if button_right.is_some() {
+        println!("hit right button");
+    }
+
     Ok(())
 }
 

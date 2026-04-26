@@ -53,6 +53,9 @@ pub static ROTARY_ENCODER_ROTATE_RIGHT_CW: AtomicU8 =
 pub static ROTARY_ENCODER_ROTATE_RIGHT_CCW: AtomicU8 =
     AtomicU8::new(0);
 
+pub static BUTTON_LEFT: AtomicU8 = AtomicU8::new(0);
+pub static BUTTON_RIGHT: AtomicU8 = AtomicU8::new(0);
+
 /// This is marked as Some with the specified input if there is
 /// an external source waiting on a signal. It basically says
 /// to start "forwarding" a signal to a waiter, instead of
@@ -118,6 +121,8 @@ pub enum Input {
     RotaryEncoderRotateLeft(Direction),
     RotaryEncoderPressRight,
     RotaryEncoderRotateRight(Direction),
+    ButtonLeft,
+    ButtonRight,
 }
 
 /// If this is found in a Result, the program should exit and change
@@ -150,7 +155,6 @@ impl InputListener {
     /// buffered). Returns Some(total_taken) if an input was found.
     ///
     /// Returns Ok(None) if none of that input was found
-
     pub fn take_input(
         input: Input,
         take_total: bool,
@@ -187,6 +191,9 @@ impl InputListener {
                     panic!("Direction should not be None.")
                 }
             },
+
+            Input::ButtonLeft => &BUTTON_LEFT,
+            Input::ButtonRight => &BUTTON_RIGHT,
         };
 
         if take_total {

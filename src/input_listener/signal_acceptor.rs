@@ -43,6 +43,13 @@ impl InputListener {
                     panic!("Direction should not be None.")
                 }
             },
+
+            Input::ButtonLeft => {
+                super::BUTTON_LEFT.fetch_add(1, SeqCst);
+            }
+            Input::ButtonRight => {
+                super::BUTTON_RIGHT.fetch_add(1, SeqCst);
+            }
         }
     }
 

@@ -1,10 +1,6 @@
-use core::{
-    fmt,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst},
-};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
 
-use esp_println::{dbg, println};
-use heapless::{String, Vec};
+use heapless::Vec;
 use static_cell::StaticCell;
 
 static _MENU_TREE: StaticCell<MenuTree> = StaticCell::new();
