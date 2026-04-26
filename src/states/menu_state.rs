@@ -2,6 +2,7 @@ use defmt::{dbg, info};
 use embassy_time::{Duration, Timer};
 use esp_println::println;
 use heapless::String;
+use rotary_encoder_embedded::Direction;
 
 use super::{Meowbox, State};
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
             MonoDisplayCommand,
         },
     },
-    input_listener::{Input, InputListener},
+    input_listener::{Input, InputListener, KillSignal},
     menu::{MenuGeneralItem, MenuProgram, MenuStatusHandle},
     states::{ErrorStateType, MenuState, Stage},
     tasks::all_leds_off,
@@ -71,20 +72,7 @@ impl Meowbox {
             //info!("display menu");
         }
 
-        let left_rotary_encoder_pressed = InputListener::take_input(
-            Input::RotaryEncoderPressLeft,
-            true,
-        )
-        .unwrap()
-        .unwrap_or_default()
-            != 0;
-
-        if left_rotary_encoder_pressed {
-            //println!("AAAA WHY THIS TRIGGER");
-            BUZZER_CH
-                .send(BuzzerCommand::Play(Duration::from_millis(50)))
-                .await;
-        }
+        let _ = handle_inputs().await;
 
         let menu_status_handle = MenuStatusHandle::new();
 
@@ -238,4 +226,70 @@ async fn test_text_on_each_line() {
             String::try_from(" \ngon!").unwrap(),
         ))
         .await;
+}
+
+/// Returns Err(KillSignal) if the kill signal was given
+async fn handle_inputs() -> Result<(), KillSignal> {
+    let left_rotary_encoder_pressed = InputListener::take_input(
+        Input::RotaryEncoderPressLeft,
+        true,
+    )
+    .unwrap()
+    .unwrap_or_default()
+        != 0;
+
+    if left_rotary_encoder_pressed {
+        //println!("AAAA WHY THIS TRIGGER");
+        BUZZER_CH
+            .send(BuzzerCommand::Play(Duration::from_millis(50)))
+            .await;
+    }
+
+    let left_rotary_encoder_cw = InputListener::take_input(
+        Input::RotaryEncoderRotateLeft(Direction::Clockwise),
+        true,
+    )?;
+
+    if let Some(amount) = left_rotary_encoder_cw {
+        for _ in 0..amount {
+            menu_scroll_down();
+        }
+    }
+
+    let left_rotary_encoder_ccw = InputListener::take_input(
+        Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
+        true,
+    )?;
+
+    if let Some(amount) = left_rotary_encoder_ccw {
+        for _ in 0..amount {
+            menu_scroll_up();
+        }
+    }
+
+    Ok(())
+}
+
+// Scrolls down the menu by 1 (which increments the scroll offset)
+fn menu_scroll_down() {
+    let menu_status_handle = MenuStatusHandle::new();
+
+    let mut scroll = menu_status_handle.scroll();
+    scroll = (scroll + 1) % menu_status_handle.current_layer_size();
+    menu_status_handle.set_scroll(scroll);
+    menu_status_handle.set_needs_update(true);
+}
+
+// Scrolls up the menu by 1 (which decrements the scroll offset)
+fn menu_scroll_up() {
+    let menu_status_handle = MenuStatusHandle::new();
+
+    let mut scroll = menu_status_handle.scroll();
+    if scroll == 0 {
+        scroll = menu_status_handle.current_layer_size() - 1;
+    } else {
+        scroll -= 1;
+    }
+    menu_status_handle.set_scroll(scroll);
+    menu_status_handle.set_needs_update(true);
 }

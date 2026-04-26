@@ -41,22 +41,12 @@ pub async fn rotary_switch_left_event(
             .wait_for_falling_edge()
             .await;
 
-        //let params = LEDRotationParams::default();
-        //LED_ROTATION_SIGNAL.signal(params);
-
-        //buzzer.lock().await.as_mut().unwrap().set_high();
-
         INPUT_CHANNEL
             .send(input_listener::Input::RotaryEncoderPressLeft)
             .await;
 
         Timer::after(Duration::from_millis(ROTARY_SW_DEBOUNCE_MS))
             .await;
-
-        //buzzer.lock().await.as_mut().unwrap().set_high();
-        //Timer::after(Duration::from_millis(200)).await;
-        //buzzer.lock().await.as_mut().unwrap().set_low();
-        //buzzer.lock().await.as_mut().unwrap().set_low();
     }
 }
 
@@ -128,18 +118,28 @@ pub async fn left_rotary_rotation_watcher(
 
         match dir {
             Direction::Clockwise => {
+                INPUT_CHANNEL
+                    .send(
+                        input_listener::Input::RotaryEncoderRotateLeft(Direction::Clockwise),
+                    )
+                    .await;
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_high(); RED_LED.lock().await.
                 // as_mut().unwrap().set_low();
                 //light_ring.forward().await;
-                menu_scroll_down();
+                //menu_scroll_down();
             }
             Direction::Anticlockwise => {
+                INPUT_CHANNEL
+                    .send(
+                        input_listener::Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
+                    )
+                    .await;
                 // RED_LED.lock().await.as_mut().unwrap().set_high();
                 // YELLOW_LED.lock().await.as_mut().unwrap().
                 // set_low();
                 //light_ring.backward().await;
-                menu_scroll_up();
+                //menu_scroll_up();
             }
             Direction::None => {}
         }
@@ -196,28 +196,4 @@ pub async fn right_rotary_rotation_watcher(
 
         Timer::after(Duration::from_micros(1000)).await; // 1 kHz
     }
-}
-
-// Scrolls down the menu by 1 (which increments the scroll offset)
-fn menu_scroll_down() {
-    let menu_status_handle = MenuStatusHandle::new();
-
-    let mut scroll = menu_status_handle.scroll();
-    scroll = (scroll + 1) % menu_status_handle.current_layer_size();
-    menu_status_handle.set_scroll(scroll);
-    menu_status_handle.set_needs_update(true);
-}
-
-// Scrolls up the menu by 1 (which decrements the scroll offset)
-fn menu_scroll_up() {
-    let menu_status_handle = MenuStatusHandle::new();
-
-    let mut scroll = menu_status_handle.scroll();
-    if scroll == 0 {
-        scroll = menu_status_handle.current_layer_size() - 1;
-    } else {
-        scroll -= 1;
-    }
-    menu_status_handle.set_scroll(scroll);
-    menu_status_handle.set_needs_update(true);
 }
