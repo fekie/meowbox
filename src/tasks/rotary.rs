@@ -56,13 +56,6 @@ pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
     //buzzer: &'static hardware::BuzzerType,
 ) {
-    let neopixel_handle = NeoPixelHandle::new();
-
-    let mut hue = 0;
-    let brightness = 20;
-
-    // TODO: basically make the buzzer beeping a separate task, that
-    // waits for a message on a channel
     loop {
         rotary_switch
             .lock()
@@ -72,30 +65,12 @@ pub async fn rotary_switch_right_event(
             .wait_for_falling_edge()
             .await;
 
-        //buzzer.lock().await.as_mut().unwrap().set_high();
+        INPUT_CHANNEL
+            .send(input_listener::Input::RotaryEncoderPressRight)
+            .await;
 
-        //neopixel_handle.cycle_all_hues(3).await;
-
-        // play simple tone
-        //BUZZER_SIGNAL.signal(BuzzerSequence::SimpleTone200ms);
-
-        //println!("{}", hue);
-
-        // NEOPIXEL_CH
-        //     .send(NeopixelCommand::ActivateWithHSV {
-        //         hue,
-        //         brightness,
-        //     })
-        //     .await;
-
-        // hue = hue.wrapping_add(10);
-
-        Timer::after(Duration::from_millis(2000)).await;
-
-        //buzzer.lock().await.as_mut().unwrap().set_high();
-        //Timer::after(Duration::from_millis(200)).await;
-        //buzzer.lock().await.as_mut().unwrap().set_low();
-        //buzzer.lock().await.as_mut().unwrap().set_low();
+        Timer::after(Duration::from_millis(ROTARY_SW_DEBOUNCE_MS))
+            .await;
     }
 }
 
@@ -104,8 +79,6 @@ pub async fn left_rotary_rotation_watcher(
     left_rotary_a: gpio::Input<'static>,
     left_rotary_b: gpio::Input<'static>,
 ) {
-    //let mut light_ring = LightRing::new().await;
-
     // start an encoder that we set the values of manually
 
     let mut raw_encoder = QuadratureTableMode::new(3);
@@ -123,9 +96,6 @@ pub async fn left_rotary_rotation_watcher(
                         input_listener::Input::RotaryEncoderRotateLeft(Direction::Clockwise),
                     )
                     .await;
-                // YELLOW_LED.lock().await.as_mut().unwrap().
-                // set_high(); RED_LED.lock().await.
-                // as_mut().unwrap().set_low();
                 //light_ring.forward().await;
                 //menu_scroll_down();
             }
@@ -135,9 +105,6 @@ pub async fn left_rotary_rotation_watcher(
                         input_listener::Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
                     )
                     .await;
-                // RED_LED.lock().await.as_mut().unwrap().set_high();
-                // YELLOW_LED.lock().await.as_mut().unwrap().
-                // set_low();
                 //light_ring.backward().await;
                 //menu_scroll_up();
             }
@@ -168,30 +135,24 @@ pub async fn right_rotary_rotation_watcher(
 
         match dir {
             Direction::Clockwise => {
-                // BLUE_LED.lock().await.as_mut().unwrap().set_high();
-                // GREEN_LED.lock().await.as_mut().unwrap().set_low();
-
-                info!("clockwise");
-                neopixel_handle.increment_neopixel_hue(5).await;
-                //Timer::after(Duration::from_millis(200)).await;
-
-                // Increment some value
+                INPUT_CHANNEL
+                    .send(
+                        input_listener::Input::RotaryEncoderRotateRight(Direction::Clockwise),
+                    )
+                    .await;
+                //light_ring.forward().await;
+                //menu_scroll_down();
             }
             Direction::Anticlockwise => {
-                // GREEN_LED.lock().await.as_mut().unwrap().
-                // set_high(); BLUE_LED.lock().await.
-                // as_mut().unwrap().set_low();
-                // Timer::after(Duration::from_millis(200)).await;
-
-                info!("counterclockwise");
-                neopixel_handle.increment_neopixel_hue(-5).await;
-
-                // Decrement some value
+                INPUT_CHANNEL
+                    .send(
+                        input_listener::Input::RotaryEncoderRotateRight(Direction::Anticlockwise),
+                    )
+                    .await;
+                //light_ring.backward().await;
+                //menu_scroll_up();
             }
-            Direction::None => {
-                //info!("nothing");
-                // Do nothing
-            }
+            Direction::None => {}
         }
 
         Timer::after(Duration::from_micros(1000)).await; // 1 kHz
