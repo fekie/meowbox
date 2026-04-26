@@ -1,26 +1,12 @@
-use defmt::println;
-#[allow(unused_imports)]
-use defmt::{error, info, warn};
 use embassy_executor::task;
 use embassy_time::{Duration, Timer};
 use esp_hal::gpio;
-use esp_println::dbg;
 use rotary_encoder_embedded::{
     Direction, quadrature::QuadratureTableMode,
 };
 
-use super::{
-    BUZZER_SIGNAL, BuzzerSequence, LED_ROTATION_SIGNAL,
-    LEDRotationParams, hardware,
-};
-use crate::{input_listener, input_listener::Input};
-use crate::{
-    //hardware::{BLUE_LED, GREEN_LED, RED_LED, YELLOW_LED},
-    input_listener::{EXTERNAL_WAIT_FOR_SIGNAL, INPUT_CHANNEL},
-    leds::LightRing,
-    menu::MenuStatusHandle,
-    tasks::neopixel::{NEOPIXEL_CH, NeoPixelHandle, NeopixelCommand},
-};
+use super::hardware;
+use crate::{input_listener, input_listener::INPUT_CHANNEL};
 
 const ROTARY_SW_DEBOUNCE_MS: u64 = 200;
 
@@ -50,11 +36,9 @@ pub async fn rotary_switch_left_event(
     }
 }
 
-/// meow
 #[task]
 pub async fn rotary_switch_right_event(
     rotary_switch: &'static hardware::RotarySwitchType,
-    //buzzer: &'static hardware::BuzzerType,
 ) {
     loop {
         rotary_switch
@@ -120,8 +104,6 @@ pub async fn right_rotary_rotation_watcher(
     right_rotary_a: gpio::Input<'static>,
     right_rotary_b: gpio::Input<'static>,
 ) {
-    let neopixel_handle = NeoPixelHandle::new();
-
     // start an encoder that we set the values of manually
     // this used to be 4, but it would sometimes miss count.
     // even still, any value of this usually overcounts
@@ -140,8 +122,6 @@ pub async fn right_rotary_rotation_watcher(
                         input_listener::Input::RotaryEncoderRotateRight(Direction::Clockwise),
                     )
                     .await;
-                //light_ring.forward().await;
-                //menu_scroll_down();
             }
             Direction::Anticlockwise => {
                 INPUT_CHANNEL
@@ -149,8 +129,6 @@ pub async fn right_rotary_rotation_watcher(
                         input_listener::Input::RotaryEncoderRotateRight(Direction::Anticlockwise),
                     )
                     .await;
-                //light_ring.backward().await;
-                //menu_scroll_up();
             }
             Direction::None => {}
         }
