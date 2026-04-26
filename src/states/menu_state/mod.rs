@@ -10,6 +10,7 @@ use rotary_encoder_embedded::Direction;
 use super::{Meowbox, State};
 use crate::{
     hardware::{
+        buttons::DPAD_DEBOUNCE,
         buzzer::{BUZZER_CH, BuzzerCommand},
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{
@@ -271,8 +272,26 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 
     let scroll_down_amount = left_rotary_encoder_cw + dpad_bottom;
 
-    for _ in 0..scroll_down_amount {
+    for _ in 0..left_rotary_encoder_cw {
         menu_scroll_down().await;
+
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::TemporaryToggle(
+                LED::AmberLeft,
+                Duration::from_millis(200),
+            ))
+            .await;
+    }
+
+    for _ in 0..dpad_bottom {
+        menu_scroll_down().await;
+
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::TemporaryToggle(
+                LED::DpadBottom,
+                Duration::from_millis(200),
+            ))
+            .await;
     }
 
     let left_rotary_encoder_ccw = InputListener::take_input(
@@ -285,8 +304,26 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         .unwrap_or_default();
 
     let scroll_up_amount = left_rotary_encoder_ccw + dpad_top;
-    for _ in 0..scroll_up_amount {
+
+    for _ in 0..left_rotary_encoder_ccw {
         menu_scroll_up().await;
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::TemporaryToggle(
+                LED::AmberLeft,
+                Duration::from_millis(200),
+            ))
+            .await;
+    }
+
+    for _ in 0..dpad_top {
+        menu_scroll_up().await;
+
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::TemporaryToggle(
+                LED::DpadTop,
+                Duration::from_millis(200),
+            ))
+            .await;
     }
 
     let old_led_scroll_index =
@@ -380,11 +417,4 @@ async fn menu_scroll_up() {
     }
     menu_status_handle.set_scroll(scroll);
     menu_status_handle.set_needs_update(true);
-
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::TemporaryToggle(
-            LED::AmberLeft,
-            Duration::from_millis(200),
-        ))
-        .await;
 }
