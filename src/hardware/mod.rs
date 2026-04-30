@@ -336,13 +336,13 @@ pub async fn init_peripherals(
     let sclk = peripherals.GPIO36;
     //let cs = peripherals.GPIO48;
 
-    let mut cs_pin = Output::new(
+    let mut cs = Output::new(
         peripherals.GPIO48,
-        Level::Low, // 👈 FORCE LOW
+        Level::Low,
         OutputConfig::default(),
     );
 
-    let dc = Output::new(
+    let mut dc = Output::new(
         peripherals.GPIO47,
         Level::Low,
         OutputConfig::default(),
@@ -357,14 +357,14 @@ pub async fn init_peripherals(
     let spi = Spi::new(
         peripherals.SPI2,
         spi::master::Config::default()
-            .with_frequency(Rate::from_mhz(10))
+            .with_frequency(Rate::from_mhz(40))
             .with_mode(esp_hal::spi::Mode::_0),
     )
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
-    .with_miso(miso);
-    //.with_cs(cs);
+    .with_miso(miso)
+    .with_cs(cs);
 
     // --- backlight ---
     let bl_pin = Output::new(
@@ -378,7 +378,7 @@ pub async fn init_peripherals(
     let mut lcd = Lcd::new(spi, dc, rst, bl)
         .with_orientation(LcdOrientation::Rotate0);
 
-    Timer::after_secs(5).await;
+    Timer::after_secs(1).await;
     println!("here 1");
 
     let mut delay = Delay::new();
@@ -389,8 +389,16 @@ pub async fn init_peripherals(
     let _ = lcd.clear(0xA000).unwrap();
 
     Timer::after_secs(1).await;
-    let _ = lcd.fill_rect(10, 10, 80, 80, rgb_to_u16(255, 0, 0));
-    //lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(255, 0, 0));
+
+    //lcd.clear(rgb_to_u16(0, 0, 0)).unwrap();
+
+    //lcd.fill_rect(0, 0, 320, 1, rgb_to_u16(0, 255, 0)).unwrap(); //
+    // top line  lcd.fill_rect(0, 0, 1, 320, rgb_to_u16(255, 0,
+    // 0)).unwrap(); // left line
+
+    //   lcd.fill_rect(50, 50, 80, 80, rgb_to_u16(255, 0, 0))
+    //      .unwrap();
+    lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(0, 0, 255));
 
     Timer::after_secs(5).await;
 
