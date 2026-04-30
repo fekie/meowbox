@@ -140,6 +140,7 @@ pub struct NonMutexPeripherals {
     pub speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
     //pub large_display: LargeDisplayType,
+    pub buzzer_400: Output<'static>,
     pub buzzer_2k3: Output<'static>,
     pub left_button: Input<'static>,
     pub right_button: Input<'static>,
@@ -182,6 +183,12 @@ pub async fn init_peripherals(
     //     Level::Low,
     //     output_config_default,
     // );
+
+    let buzzer_400 = Output::new(
+        peripherals.GPIO15,
+        Level::Low,
+        output_config_default,
+    );
 
     let buzzer_2k3 = Output::new(
         peripherals.GPIO16,
@@ -334,15 +341,9 @@ pub async fn init_peripherals(
     let miso = peripherals.GPIO45;
     let mosi = peripherals.GPIO38;
     let sclk = peripherals.GPIO36;
-    //let cs = peripherals.GPIO48;
+    let cs = peripherals.GPIO48;
 
-    let mut cs = Output::new(
-        peripherals.GPIO48,
-        Level::Low,
-        OutputConfig::default(),
-    );
-
-    let mut dc = Output::new(
+    let dc = Output::new(
         peripherals.GPIO47,
         Level::Low,
         OutputConfig::default(),
@@ -353,11 +354,10 @@ pub async fn init_peripherals(
         OutputConfig::default(),
     );
 
-    // --- SPI ---
     let spi = Spi::new(
         peripherals.SPI2,
         spi::master::Config::default()
-            .with_frequency(Rate::from_mhz(40))
+            .with_frequency(Rate::from_mhz(10))
             .with_mode(esp_hal::spi::Mode::_0),
     )
     .unwrap()
@@ -366,41 +366,26 @@ pub async fn init_peripherals(
     .with_miso(miso)
     .with_cs(cs);
 
-    // --- backlight ---
     let bl_pin = Output::new(
         peripherals.GPIO46,
-        Level::High,
+        Level::Low,
         OutputConfig::default(),
     );
     let bl = DummyPwm(bl_pin);
 
     // --- LCD ---
-    let mut lcd = Lcd::new(spi, dc, rst, bl)
-        .with_orientation(LcdOrientation::Rotate0);
+    //let mut lcd = Lcd::new(spi, dc, rst, bl)
+    //  .with_orientation(LcdOrientation::Rotate0);
 
-    Timer::after_secs(1).await;
-    println!("here 1");
+    //Timer::after_secs(10).await;
 
     let mut delay = Delay::new();
 
-    lcd.init(&mut delay).unwrap();
-    lcd.set_backlight(255).unwrap();
+    //lcd.init(&mut delay).unwrap();
+    //lcd.set_backlight(255).unwrap();
 
-    let _ = lcd.clear(0xA000).unwrap();
-
-    Timer::after_secs(1).await;
-
-    //lcd.clear(rgb_to_u16(0, 0, 0)).unwrap();
-
-    //lcd.fill_rect(0, 0, 320, 1, rgb_to_u16(0, 255, 0)).unwrap(); //
-    // top line  lcd.fill_rect(0, 0, 1, 320, rgb_to_u16(255, 0,
-    // 0)).unwrap(); // left line
-
-    //   lcd.fill_rect(50, 50, 80, 80, rgb_to_u16(255, 0, 0))
-    //      .unwrap();
-    lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(0, 0, 255));
-
-    Timer::after_secs(5).await;
+    //lcd.clear(0x0000).unwrap();
+    //lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(255, 0, 0));
 
     NonMutexPeripherals {
         mono_display,
@@ -413,6 +398,7 @@ pub async fn init_peripherals(
         speaker,
         shifter, /*i2s_speaker,
                   *large_display, */
+        buzzer_400,
         buzzer_2k3,
         left_button,
         right_button,

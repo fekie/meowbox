@@ -11,7 +11,7 @@ use super::{Meowbox, State};
 use crate::{
     hardware::{
         buttons::DPAD_DEBOUNCE,
-        buzzer::{BUZZER_CH, BuzzerCommand},
+        buzzer::{BUZZER_2K3_CH, BUZZER_400_CH, BuzzerCommand},
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
@@ -260,8 +260,23 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 
     if left_rotary_encoder_pressed {
         //println!("AAAA WHY THIS TRIGGER");
-        BUZZER_CH
+        BUZZER_2K3_CH
             .send(BuzzerCommand::Play(Duration::from_millis(50)))
+            .await;
+    }
+
+    let right_rotary_encoder_pressed = InputListener::take_input(
+        Input::RotaryEncoderPressRight,
+        true,
+    )
+    .unwrap()
+    .unwrap_or_default()
+        != 0;
+
+    if right_rotary_encoder_pressed {
+        //println!("AAAA WHY THIS TRIGGER");
+        BUZZER_400_CH
+            .send(BuzzerCommand::Play(Duration::from_millis(2000)))
             .await;
     }
 
@@ -336,7 +351,7 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         + left_rotary_encoder_ccw
         + dpad_top;
     for _ in 0..total_changes {
-        BUZZER_CH.send(BuzzerCommand::Click).await;
+        BUZZER_2K3_CH.send(BuzzerCommand::Click).await;
     }
 
     let old_led_scroll_index =

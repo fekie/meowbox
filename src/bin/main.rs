@@ -33,7 +33,10 @@ use meowbox::{
             dpad_bottom_listener, dpad_left_listener,
             dpad_right_listener, dpad_top_listener,
         },
-        buzzer::{BUZZER_CH, BuzzerCommand, buzzer_listener},
+        buzzer::{
+            BUZZER_2K3_CH, BUZZER_400_CH, BuzzerCommand,
+            buzzer_2k3_listener, buzzer_400_listener,
+        },
         led_shifter::{
             self, LED, LED_SHIFTER_CHANNEL, LedCommand,
             led_shifter_listener,
@@ -174,7 +177,10 @@ async fn main(spawner: Spawner) -> ! {
     MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
 
     let _ = spawner
-        .spawn(buzzer_listener(non_mutex_peripherals.buzzer_2k3));
+        .spawn(buzzer_2k3_listener(non_mutex_peripherals.buzzer_2k3));
+
+    let _ = spawner
+        .spawn(buzzer_400_listener(non_mutex_peripherals.buzzer_400));
 
     // DO NOT REMOVE
     safety_startup().await;
@@ -224,7 +230,7 @@ async fn main(spawner: Spawner) -> ! {
     let _ =
         spawner.spawn(speaker_task(non_mutex_peripherals.speaker));
 
-    BUZZER_CH
+    BUZZER_2K3_CH
         .send(BuzzerCommand::Play(Duration::from_millis(50)))
         .await;
 
