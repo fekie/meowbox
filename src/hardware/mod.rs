@@ -386,8 +386,10 @@ pub async fn init_peripherals(
     lcd.init(&mut delay).unwrap();
     lcd.set_backlight(255).unwrap();
 
-    let _ = lcd.clear(0x00AA).unwrap();
-    let _ = lcd.fill_rect(10, 10, 20, 30, rgb_to_u16(255, 0, 255));
+    let _ = lcd.clear(0xA000).unwrap();
+
+    Timer::after_secs(1).await;
+    let _ = lcd.fill_rect(10, 10, 80, 80, rgb_to_u16(255, 0, 0));
     //lcd.fill_rect(10, 10, 50, 50, rgb_to_u16(255, 0, 0));
 
     Timer::after_secs(5).await;
