@@ -25,6 +25,7 @@ use esp_hal::{
 use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
+use hardware::large_display::backlight_listener;
 use meowbox::{
     hardware::{
         self,
@@ -181,6 +182,9 @@ async fn main(spawner: Spawner) -> ! {
 
     let _ = spawner
         .spawn(buzzer_400_listener(non_mutex_peripherals.buzzer_400));
+
+    let _ = spawner
+        .spawn(backlight_listener(non_mutex_peripherals.bl_pin));
 
     // DO NOT REMOVE
     safety_startup().await;

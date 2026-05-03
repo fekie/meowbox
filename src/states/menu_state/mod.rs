@@ -12,6 +12,7 @@ use crate::{
     hardware::{
         buttons::DPAD_DEBOUNCE,
         buzzer::{BUZZER_2K3_CH, BUZZER_400_CH, BuzzerCommand},
+        large_display::{BACKLIGHT_CH, BacklightCommand},
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
@@ -381,6 +382,8 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         InputListener::take_input(Input::ButtonRight, true)?;
 
     if button_right.is_some() {
+        BACKLIGHT_CH.send(BacklightCommand::Toggle).await;
+
         println!("hit right button");
     }
 

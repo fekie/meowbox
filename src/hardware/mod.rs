@@ -148,6 +148,7 @@ pub struct NonMutexPeripherals {
     pub dpad_top: Input<'static>,
     pub dpad_left: Input<'static>,
     pub dpad_right: Input<'static>,
+    pub bl_pin: Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -371,7 +372,7 @@ pub async fn init_peripherals(
         Level::Low,
         OutputConfig::default(),
     );
-    let bl = DummyPwm(bl_pin);
+    //let bl = DummyPwm(bl_pin);
 
     // --- LCD ---
     //let mut lcd = Lcd::new(spi, dc, rst, bl)
@@ -406,5 +407,6 @@ pub async fn init_peripherals(
         dpad_top,
         dpad_left,
         dpad_right,
+        bl_pin,
     }
 }
