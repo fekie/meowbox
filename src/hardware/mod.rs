@@ -364,10 +364,9 @@ pub async fn init_peripherals(
     .unwrap()
     .with_sck(sclk)
     .with_mosi(mosi)
-    .with_miso(miso)
-    .with_cs(cs);
+    .with_miso(miso);
 
-    let bl_pin = Output::new(
+    let mut bl_pin = Output::new(
         peripherals.GPIO46,
         Level::Low,
         OutputConfig::default(),
@@ -380,7 +379,32 @@ pub async fn init_peripherals(
 
     //Timer::after_secs(10).await;
 
+    let cs = Output::new(cs, Level::High, OutputConfig::default());
+    let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    let interface = SPIInterface::new(spi_device, dc);
     let mut delay = Delay::new();
+
+    match Ili9341::new(
+        interface,
+        rst,
+        &mut delay,
+        Orientation::Portrait,
+        DisplaySize240x320,
+    ) {
+        Ok(mut large_display) => {
+            let _ = large_display.draw_raw_iter(
+                50,
+                70,
+                169,
+                189,
+                core::iter::repeat(0xf800).take(120 * 120),
+            );
+            bl_pin.set_high();
+        }
+        Err(_) => {
+            error!("large display init failed");
+        }
+    }
 
     //lcd.init(&mut delay).unwrap();
     //lcd.set_backlight(255).unwrap();
