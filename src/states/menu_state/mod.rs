@@ -630,7 +630,7 @@ async fn update_led_scroll_bar(
         let led = LED_SCROLL_BAR_MAPPING[led_index];
 
         LED_SHIFTER_CHANNEL
-            .send(LedCommand::TemporaryToggle(
+            .send(LedCommand::TemporarySetHigh(
                 led,
                 LED_SCROLL_BAR_TOGGLE_TIME,
             ))

@@ -26,6 +26,10 @@ pub enum LedCommand {
     /// Temporarily toggle an led for a set duration,
     /// then untoggle it.
     TemporaryToggle(LED, Duration),
+    /// Turn an LED on for a duration. Re-sending this command for
+    /// the same LED extends the on time instead of toggling it off.
+    TemporarySetHigh(LED, Duration),
+    ExpireTemporaryHigh(LED, u16),
     /// First parameter is the amount of time between each half light
     /// move. The second is the amount of total cycles to do. Third is
     /// direction.
@@ -92,6 +96,18 @@ async fn delay_toggle(led: LED, duration: Duration) {
     LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(led)).await;
     Timer::after(duration).await;
     LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(led)).await;
+}
+
+#[embassy_executor::task(pool_size = 64)]
+async fn delay_temporary_high(
+    led: LED,
+    duration: Duration,
+    token: u16,
+) {
+    Timer::after(duration).await;
+    LED_SHIFTER_CHANNEL
+        .send(LedCommand::ExpireTemporaryHigh(led, token))
+        .await;
 }
 
 #[task]
@@ -165,11 +181,13 @@ pub async fn led_shifter_listener(mut led_shifter: LedShifterType) {
     ];
 
     let mut send_spawner = SendSpawner::for_current_executor().await;
+    let mut temporary_high_tokens = [0; 16];
 
     // initialize all to low
     execute_command(
         &mut send_spawner,
         &mut led_array,
+        &mut temporary_high_tokens,
         LedCommand::SetAllLow,
     );
 
@@ -181,7 +199,12 @@ pub async fn led_shifter_listener(mut led_shifter: LedShifterType) {
 
         //println!("but it gets the cmd");
 
-        execute_command(&mut send_spawner, &mut led_array, cmd);
+        execute_command(
+            &mut send_spawner,
+            &mut led_array,
+            &mut temporary_high_tokens,
+            cmd,
+        );
     }
 
     // for led in LED::iter() {
@@ -211,23 +234,31 @@ pub async fn led_shifter_listener(mut led_shifter: LedShifterType) {
 fn execute_command(
     send_spawner: &mut SendSpawner,
     led_array: &mut [PinWrapper; 16],
+    temporary_high_tokens: &mut [u16; 16],
     command: LedCommand,
 ) {
     match command {
         LedCommand::SetAllLow => {
             for i in 0..led_array.len() {
+                temporary_high_tokens[i] =
+                    temporary_high_tokens[i].wrapping_add(1);
                 let pin = &mut led_array[i];
                 pin.set_low();
             }
         }
         LedCommand::SetAllHigh => {
             for i in 0..led_array.len() {
+                temporary_high_tokens[i] =
+                    temporary_high_tokens[i].wrapping_add(1);
                 let pin = &mut led_array[i];
                 pin.set_high();
             }
         }
         LedCommand::Toggle(led) => {
-            let pin = &mut led_array[led as usize];
+            let i = led as usize;
+            temporary_high_tokens[i] =
+                temporary_high_tokens[i].wrapping_add(1);
+            let pin = &mut led_array[i];
             let current_value = pin.value;
 
             match current_value {
@@ -240,15 +271,39 @@ fn execute_command(
             };
         }
         LedCommand::SetHigh(led) => {
+            let i = led as usize;
+            temporary_high_tokens[i] =
+                temporary_high_tokens[i].wrapping_add(1);
             let pin = &mut led_array[led as usize];
             pin.set_high();
         }
         LedCommand::SetLow(led) => {
+            let i = led as usize;
+            temporary_high_tokens[i] =
+                temporary_high_tokens[i].wrapping_add(1);
             let pin = &mut led_array[led as usize];
             pin.set_low();
         }
         LedCommand::TemporaryToggle(led, duration) => {
             send_spawner.spawn(delay_toggle(led, duration)).unwrap();
+        }
+        LedCommand::TemporarySetHigh(led, duration) => {
+            let i = led as usize;
+            temporary_high_tokens[i] =
+                temporary_high_tokens[i].wrapping_add(1);
+            let token = temporary_high_tokens[i];
+            led_array[i].set_high();
+
+            send_spawner
+                .spawn(delay_temporary_high(led, duration, token))
+                .unwrap();
+        }
+        LedCommand::ExpireTemporaryHigh(led, token) => {
+            let i = led as usize;
+
+            if temporary_high_tokens[i] == token {
+                led_array[i].set_low();
+            }
         }
         LedCommand::CycleALl {
             half_step_time: _,
