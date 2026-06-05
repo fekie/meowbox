@@ -458,16 +458,21 @@ const RIGHT_ROTARY_SNAKE_CELL_STRIDE_Y: u16 = 32;
 const RIGHT_ROTARY_SNAKE_SQUARE_SIZE: u16 = 28;
 
 async fn draw_right_rotary_display_press() {
-    let index = RIGHT_ROTARY_DISPLAY_INDEX.fetch_add(1, SeqCst)
+    let index = (RIGHT_ROTARY_DISPLAY_INDEX.load(SeqCst) + 1)
         % RIGHT_ROTARY_DISPLAY_COLORS.len();
 
-    RIGHT_ROTARY_DISPLAY_INITIALIZED.store(true, SeqCst);
+    RIGHT_ROTARY_DISPLAY_INDEX.store(index, SeqCst);
+    let snake_index = RIGHT_ROTARY_SNAKE_INDEX.load(SeqCst);
 
-    draw_right_rotary_display(
-        RIGHT_ROTARY_SNAKE_INDEX.load(SeqCst),
-        index,
-    )
-    .await;
+    if RIGHT_ROTARY_DISPLAY_INITIALIZED.swap(true, SeqCst) {
+        draw_right_rotary_display_square(
+            snake_index,
+            RIGHT_ROTARY_DISPLAY_COLORS[index],
+        )
+        .await;
+    } else {
+        draw_right_rotary_display(snake_index, index).await;
+    }
 }
 
 async fn move_right_rotary_display_square(cw: u16, ccw: u16) {
@@ -558,6 +563,20 @@ async fn redraw_right_rotary_display_square(
         .send(LargeDisplayCommand::FillRect {
             x: new_x,
             y: new_y,
+            width: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            height: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            color,
+        })
+        .await;
+}
+
+async fn draw_right_rotary_display_square(index: usize, color: u16) {
+    let (x, y) = right_rotary_snake_position(index);
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::FillRect {
+            x,
+            y,
             width: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
             height: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
             color,
