@@ -286,6 +286,7 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         // BUZZER_400_CH
         //     .send(BuzzerCommand::Play(Duration::from_millis(2000)))
         //     .await;
+        BACKLIGHT_CH.send(BacklightCommand::SetHigh).await;
         draw_right_rotary_display_press().await;
     }
 
@@ -301,11 +302,15 @@ async fn handle_inputs() -> Result<(), KillSignal> {
     )?
     .unwrap_or_default();
 
-    move_right_rotary_display_square(
-        right_rotary_encoder_cw,
-        right_rotary_encoder_ccw,
-    )
-    .await;
+    if right_rotary_encoder_cw != 0 || right_rotary_encoder_ccw != 0 {
+        BACKLIGHT_CH.send(BacklightCommand::SetHigh).await;
+
+        move_right_rotary_display_square(
+            right_rotary_encoder_cw,
+            right_rotary_encoder_ccw,
+        )
+        .await;
+    }
 
     let left_rotary_encoder_cw = InputListener::take_input(
         Input::RotaryEncoderRotateLeft(Direction::Clockwise),

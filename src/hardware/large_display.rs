@@ -43,6 +43,8 @@ use esp_hal::gpio::{self, Level};
 
 pub enum BacklightCommand {
     Toggle,
+    SetHigh,
+    SetLow,
 }
 
 pub enum LargeDisplayCommand {
@@ -75,6 +77,8 @@ pub async fn backlight_listener(mut bl_pin: gpio::Output<'static>) {
                     Level::Low => bl_pin.set_high(),
                 }
             }
+            BacklightCommand::SetHigh => bl_pin.set_high(),
+            BacklightCommand::SetLow => bl_pin.set_low(),
         }
     }
 }

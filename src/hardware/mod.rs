@@ -391,10 +391,7 @@ pub async fn init_peripherals(
         Orientation::Portrait,
         DisplaySize240x320,
     ) {
-        Ok(large_display) => {
-            bl_pin.set_high();
-            Some(large_display)
-        }
+        Ok(large_display) => Some(large_display),
         Err(_) => {
             error!("large display init failed");
             None
