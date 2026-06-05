@@ -793,7 +793,7 @@ fn lfsr_next(state: u16) -> u16 {
 //     let neopixel = neopixel::init(
 //         peripherals.LEDC,
 //         peripherals.RMT,
-//         peripherals.GPIO38,
+//         peripherals.GPIO19,
 //         output_config_default,
 //     );
 

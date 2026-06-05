@@ -150,6 +150,7 @@ pub struct NonMutexPeripherals {
     pub dpad_left: Input<'static>,
     pub dpad_right: Input<'static>,
     pub bl_pin: Output<'static>,
+    pub neopixel_pin_tied_down: Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -237,6 +238,11 @@ pub async fn init_peripherals(
         Input::new(peripherals.GPIO10, pull_up_config);
     let right_rotary_b =
         Input::new(peripherals.GPIO12, pull_up_config);
+    let neopixel_pin_tied_down = Output::new(
+        peripherals.GPIO19,
+        Level::Low,
+        output_config_default,
+    );
 
     {
         //*(RIGHT_BUTTON.lock().await) = Some(right_button);
@@ -282,7 +288,7 @@ pub async fn init_peripherals(
     // let neopixel = neopixel::init(
     //     peripherals.LEDC,
     //     peripherals.RMT,
-    //     peripherals.GPIO38,
+    //     peripherals.GPIO19,
     //     output_config_default,
     // );
 
@@ -431,5 +437,6 @@ pub async fn init_peripherals(
         dpad_left,
         dpad_right,
         bl_pin,
+        neopixel_pin_tied_down,
     }
 }
