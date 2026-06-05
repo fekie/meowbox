@@ -45,6 +45,7 @@ pub enum BacklightCommand {
     Toggle,
     SetHigh,
     SetLow,
+    SetBrightness(u8),
 }
 
 pub enum LargeDisplayCommand {
@@ -79,6 +80,13 @@ pub async fn backlight_listener(mut bl_pin: gpio::Output<'static>) {
             }
             BacklightCommand::SetHigh => bl_pin.set_high(),
             BacklightCommand::SetLow => bl_pin.set_low(),
+            BacklightCommand::SetBrightness(brightness) => {
+                if brightness > 0 {
+                    bl_pin.set_high();
+                } else {
+                    bl_pin.set_low();
+                }
+            }
         }
     }
 }

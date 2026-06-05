@@ -41,6 +41,7 @@ pub mod leds;
 pub mod mono_display;
 pub mod neopixel;
 pub mod speaker;
+pub mod thumbwheel;
 
 use mono_display::MonoDisplay;
 
@@ -247,6 +248,12 @@ pub async fn init_peripherals(
         *(ROTARY_SWITCH_LEFT.lock().await) = Some(rotary_switch_left);
         *(ROTARY_SWITCH_RIGHT.lock().await) =
             Some(rotary_switch_right);
+        *(thumbwheel::THUMBWHEELS.lock().await) =
+            Some(thumbwheel::Thumbwheels::new(
+                peripherals.ADC2,
+                peripherals.GPIO17,
+                peripherals.GPIO18,
+            ));
 
         // *(RED_LED.lock().await) = Some(red_led);
         // *(GREEN_LED.lock().await) = Some(green_led);

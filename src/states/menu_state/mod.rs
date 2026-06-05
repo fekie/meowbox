@@ -22,6 +22,7 @@ use crate::{
             MonoDisplayCommand,
         },
         speaker::{SPEAKER_CHANNEL, SpeakerCommand},
+        thumbwheel::ThumbwheelHandle,
     },
     input_listener::{Input, InputListener, KillSignal},
     states::{ErrorStateType, MenuState, Stage},
@@ -35,6 +36,8 @@ static RIGHT_ROTARY_DISPLAY_INDEX: AtomicUsize = AtomicUsize::new(0);
 static RIGHT_ROTARY_SNAKE_INDEX: AtomicUsize = AtomicUsize::new(0);
 static RIGHT_ROTARY_DISPLAY_INITIALIZED: AtomicBool =
     AtomicBool::new(false);
+static LAST_RIGHT_THUMBWHEEL_BACKLIGHT: AtomicUsize =
+    AtomicUsize::new(usize::MAX);
 
 // Light Ring
 impl Meowbox {
@@ -95,6 +98,8 @@ impl Meowbox {
             // Display stuff here
             //info!("display menu");
         }
+
+        poll_right_thumbwheel_backlight().await;
 
         let _ = handle_inputs().await;
 
@@ -193,6 +198,45 @@ impl Meowbox {
             ),
         }
     }
+}
+
+const THUMBWHEEL_ADC_MAX: u16 = 4095;
+const THUMBWHEEL_PRINT_THRESHOLD: usize = 16;
+
+async fn poll_right_thumbwheel_backlight() {
+    let Some(right_thumbwheel) = ThumbwheelHandle::right_raw().await
+    else {
+        return;
+    };
+
+    let backlight = usize::from(right_thumbwheel);
+    let last_backlight = LAST_RIGHT_THUMBWHEEL_BACKLIGHT.load(SeqCst);
+
+    if last_backlight != usize::MAX
+        && last_backlight.abs_diff(backlight)
+            < THUMBWHEEL_PRINT_THRESHOLD
+    {
+        return;
+    }
+
+    LAST_RIGHT_THUMBWHEEL_BACKLIGHT.store(backlight, SeqCst);
+
+    let brightness = adc_to_backlight_brightness(right_thumbwheel);
+
+    println!(
+        "right thumbwheel changed: adc={} backlight_brightness={}",
+        right_thumbwheel, brightness
+    );
+
+    BACKLIGHT_CH
+        .send(BacklightCommand::SetBrightness(brightness))
+        .await;
+}
+
+fn adc_to_backlight_brightness(adc: u16) -> u8 {
+    let adc = adc.min(THUMBWHEEL_ADC_MAX) as u32;
+
+    ((adc * u8::MAX as u32) / THUMBWHEEL_ADC_MAX as u32) as u8
 }
 
 #[allow(dead_code)]
