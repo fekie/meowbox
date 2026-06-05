@@ -16,7 +16,7 @@
 
 use core::{
     fmt,
-    sync::atomic::{AtomicBool, AtomicU8, Ordering::SeqCst},
+    sync::atomic::{AtomicBool, AtomicU16, Ordering::SeqCst},
 };
 
 use defmt::{dbg, println};
@@ -42,24 +42,25 @@ pub static INPUT_CHANNEL: Channel<
 // okay so. i will store how many times something occurs. When an
 // input is "taken", a parameter will be passed in
 
-pub static ROTARY_ENCODER_PRESS_LEFT: AtomicU8 = AtomicU8::new(0);
-pub static ROTARY_ENCODER_ROTATE_LEFT_CW: AtomicU8 = AtomicU8::new(0);
-pub static ROTARY_ENCODER_ROTATE_LEFT_CCW: AtomicU8 =
-    AtomicU8::new(0);
+pub static ROTARY_ENCODER_PRESS_LEFT: AtomicU16 = AtomicU16::new(0);
+pub static ROTARY_ENCODER_ROTATE_LEFT_CW: AtomicU16 =
+    AtomicU16::new(0);
+pub static ROTARY_ENCODER_ROTATE_LEFT_CCW: AtomicU16 =
+    AtomicU16::new(0);
 
-pub static ROTARY_ENCODER_PRESS_RIGHT: AtomicU8 = AtomicU8::new(0);
-pub static ROTARY_ENCODER_ROTATE_RIGHT_CW: AtomicU8 =
-    AtomicU8::new(0);
-pub static ROTARY_ENCODER_ROTATE_RIGHT_CCW: AtomicU8 =
-    AtomicU8::new(0);
+pub static ROTARY_ENCODER_PRESS_RIGHT: AtomicU16 = AtomicU16::new(0);
+pub static ROTARY_ENCODER_ROTATE_RIGHT_CW: AtomicU16 =
+    AtomicU16::new(0);
+pub static ROTARY_ENCODER_ROTATE_RIGHT_CCW: AtomicU16 =
+    AtomicU16::new(0);
 
-pub static BUTTON_LEFT: AtomicU8 = AtomicU8::new(0);
-pub static BUTTON_RIGHT: AtomicU8 = AtomicU8::new(0);
+pub static BUTTON_LEFT: AtomicU16 = AtomicU16::new(0);
+pub static BUTTON_RIGHT: AtomicU16 = AtomicU16::new(0);
 
-pub static DPAD_BOTTOM: AtomicU8 = AtomicU8::new(0);
-pub static DPAD_TOP: AtomicU8 = AtomicU8::new(0);
-pub static DPAD_LEFT: AtomicU8 = AtomicU8::new(0);
-pub static DPAD_RIGHT: AtomicU8 = AtomicU8::new(0);
+pub static DPAD_BOTTOM: AtomicU16 = AtomicU16::new(0);
+pub static DPAD_TOP: AtomicU16 = AtomicU16::new(0);
+pub static DPAD_LEFT: AtomicU16 = AtomicU16::new(0);
+pub static DPAD_RIGHT: AtomicU16 = AtomicU16::new(0);
 
 /// This is marked as Some with the specified input if there is
 /// an external source waiting on a signal. It basically says
@@ -167,7 +168,7 @@ impl InputListener {
     pub fn take_input(
         input: Input,
         take_total: bool,
-    ) -> Result<Option<u8>, KillSignal> {
+    ) -> Result<Option<u16>, KillSignal> {
         let counter = match input {
             Input::RotaryEncoderPressLeft => {
                 &ROTARY_ENCODER_PRESS_LEFT

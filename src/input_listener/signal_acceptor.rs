@@ -1,4 +1,4 @@
-use core::sync::atomic::Ordering::SeqCst;
+use core::sync::atomic::{AtomicU16, Ordering::SeqCst};
 
 use rotary_encoder_embedded::Direction;
 
@@ -8,17 +8,19 @@ impl InputListener {
     pub(super) fn handle_no_wait_for_signal(input: Input) {
         match input {
             Input::RotaryEncoderPressLeft => {
-                super::ROTARY_ENCODER_PRESS_LEFT.fetch_add(1, SeqCst);
+                increment_counter(&super::ROTARY_ENCODER_PRESS_LEFT);
             }
 
             Input::RotaryEncoderRotateLeft(dir) => match dir {
                 Direction::Clockwise => {
-                    super::ROTARY_ENCODER_ROTATE_LEFT_CW
-                        .fetch_add(1, SeqCst);
+                    increment_counter(
+                        &super::ROTARY_ENCODER_ROTATE_LEFT_CW,
+                    );
                 }
                 Direction::Anticlockwise => {
-                    super::ROTARY_ENCODER_ROTATE_LEFT_CCW
-                        .fetch_add(1, SeqCst);
+                    increment_counter(
+                        &super::ROTARY_ENCODER_ROTATE_LEFT_CCW,
+                    );
                 }
                 Direction::None => {
                     panic!("Direction should not be None.")
@@ -26,18 +28,19 @@ impl InputListener {
             },
 
             Input::RotaryEncoderPressRight => {
-                super::ROTARY_ENCODER_PRESS_RIGHT
-                    .fetch_add(1, SeqCst);
+                increment_counter(&super::ROTARY_ENCODER_PRESS_RIGHT);
             }
 
             Input::RotaryEncoderRotateRight(dir) => match dir {
                 Direction::Clockwise => {
-                    super::ROTARY_ENCODER_ROTATE_RIGHT_CW
-                        .fetch_add(1, SeqCst);
+                    increment_counter(
+                        &super::ROTARY_ENCODER_ROTATE_RIGHT_CW,
+                    );
                 }
                 Direction::Anticlockwise => {
-                    super::ROTARY_ENCODER_ROTATE_RIGHT_CCW
-                        .fetch_add(1, SeqCst);
+                    increment_counter(
+                        &super::ROTARY_ENCODER_ROTATE_RIGHT_CCW,
+                    );
                 }
                 Direction::None => {
                     panic!("Direction should not be None.")
@@ -45,23 +48,23 @@ impl InputListener {
             },
 
             Input::ButtonLeft => {
-                super::BUTTON_LEFT.fetch_add(1, SeqCst);
+                increment_counter(&super::BUTTON_LEFT);
             }
             Input::ButtonRight => {
-                super::BUTTON_RIGHT.fetch_add(1, SeqCst);
+                increment_counter(&super::BUTTON_RIGHT);
             }
 
             Input::DpadBottom => {
-                super::DPAD_BOTTOM.fetch_add(1, SeqCst);
+                increment_counter(&super::DPAD_BOTTOM);
             }
             Input::DpadTop => {
-                super::DPAD_TOP.fetch_add(1, SeqCst);
+                increment_counter(&super::DPAD_TOP);
             }
             Input::DpadLeft => {
-                super::DPAD_LEFT.fetch_add(1, SeqCst);
+                increment_counter(&super::DPAD_LEFT);
             }
             Input::DpadRight => {
-                super::DPAD_RIGHT.fetch_add(1, SeqCst);
+                increment_counter(&super::DPAD_RIGHT);
             }
         }
     }
@@ -80,4 +83,10 @@ impl InputListener {
     ) {
         todo!()
     }
+}
+
+fn increment_counter(counter: &AtomicU16) {
+    let _ = counter.fetch_update(SeqCst, SeqCst, |value| {
+        Some(value.saturating_add(1))
+    });
 }

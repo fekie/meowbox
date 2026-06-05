@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
 
 use defmt::{dbg, info};
 use embassy_time::{Duration, Timer};
@@ -32,6 +32,9 @@ pub mod menu;
 
 pub static LED_SCROLL_INDEX: AtomicUsize = AtomicUsize::new(0);
 static RIGHT_ROTARY_DISPLAY_INDEX: AtomicUsize = AtomicUsize::new(0);
+static RIGHT_ROTARY_SNAKE_INDEX: AtomicUsize = AtomicUsize::new(0);
+static RIGHT_ROTARY_DISPLAY_INITIALIZED: AtomicBool =
+    AtomicBool::new(false);
 
 // Light Ring
 impl Meowbox {
@@ -286,6 +289,24 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         draw_right_rotary_display_press().await;
     }
 
+    let right_rotary_encoder_cw = InputListener::take_input(
+        Input::RotaryEncoderRotateRight(Direction::Clockwise),
+        true,
+    )?
+    .unwrap_or_default();
+
+    let right_rotary_encoder_ccw = InputListener::take_input(
+        Input::RotaryEncoderRotateRight(Direction::Anticlockwise),
+        true,
+    )?
+    .unwrap_or_default();
+
+    move_right_rotary_display_square(
+        right_rotary_encoder_cw,
+        right_rotary_encoder_ccw,
+    )
+    .await;
+
     let left_rotary_encoder_cw = InputListener::take_input(
         Input::RotaryEncoderRotateLeft(Direction::Clockwise),
         true,
@@ -363,9 +384,9 @@ async fn handle_inputs() -> Result<(), KillSignal> {
     let old_led_scroll_index =
         LED_SCROLL_INDEX.load(core::sync::atomic::Ordering::SeqCst);
 
-    let new_led_scroll_index = (old_led_scroll_index as i8
-        + scroll_down_amount as i8
-        - scroll_up_amount as i8)
+    let new_led_scroll_index = (old_led_scroll_index as i32
+        + scroll_down_amount as i32
+        - scroll_up_amount as i32)
         .rem_euclid(6) as usize;
 
     update_led_scroll_bar(
@@ -416,6 +437,7 @@ const LED_SCROLL_BAR_TOGGLE_TIME: Duration =
 
 const LARGE_DISPLAY_BLACK: u16 = 0x0000;
 const LARGE_DISPLAY_WHITE: u16 = 0xffff;
+const LARGE_DISPLAY_DIM_GRAY: u16 = 0x39e7;
 const RIGHT_ROTARY_DISPLAY_COLORS: [u16; 6] = [
     0xf800, // red
     0xfd20, // orange
@@ -424,23 +446,104 @@ const RIGHT_ROTARY_DISPLAY_COLORS: [u16; 6] = [
     0x001f, // blue
     0xffff, // white
 ];
+const RIGHT_ROTARY_SNAKE_COLUMNS: usize = 4;
+const RIGHT_ROTARY_SNAKE_ROWS: usize = 5;
+const RIGHT_ROTARY_SNAKE_LEN: usize =
+    RIGHT_ROTARY_SNAKE_COLUMNS * RIGHT_ROTARY_SNAKE_ROWS;
+const RIGHT_ROTARY_SNAKE_ORIGIN_X: u16 = 12;
+const RIGHT_ROTARY_SNAKE_ORIGIN_Y: u16 = 28;
+const RIGHT_ROTARY_SNAKE_CELL_SIZE: u16 = 24;
+const RIGHT_ROTARY_SNAKE_CELL_GAP: u16 = 6;
+const RIGHT_ROTARY_SNAKE_SQUARE_SIZE: u16 = 20;
+const RIGHT_ROTARY_BAR_X: u16 = 170;
+const RIGHT_ROTARY_BAR_Y: u16 = 80;
+const RIGHT_ROTARY_BAR_WIDTH: u16 = 28;
+const RIGHT_ROTARY_BAR_HEIGHT: u16 = 120;
 
 async fn draw_right_rotary_display_press() {
     let index = RIGHT_ROTARY_DISPLAY_INDEX.fetch_add(1, SeqCst)
         % RIGHT_ROTARY_DISPLAY_COLORS.len();
-    let color = RIGHT_ROTARY_DISPLAY_COLORS[index];
-    let x = 20 + (index as u16 * 32);
+
+    RIGHT_ROTARY_DISPLAY_INITIALIZED.store(true, SeqCst);
+
+    draw_right_rotary_display(
+        RIGHT_ROTARY_SNAKE_INDEX.load(SeqCst),
+        index,
+    )
+    .await;
+}
+
+async fn move_right_rotary_display_square(cw: u16, ccw: u16) {
+    if cw == 0 && ccw == 0 {
+        return;
+    }
+
+    if !RIGHT_ROTARY_DISPLAY_INITIALIZED.swap(true, SeqCst) {
+        draw_right_rotary_display(
+            RIGHT_ROTARY_SNAKE_INDEX.load(SeqCst),
+            current_right_rotary_display_color_index(),
+        )
+        .await;
+    }
+
+    let forward_steps = ccw.saturating_sub(cw);
+    let backward_steps = cw.saturating_sub(ccw);
+
+    for _ in 0..forward_steps {
+        move_right_rotary_display_square_one_step(1).await;
+    }
+
+    for _ in 0..backward_steps {
+        move_right_rotary_display_square_one_step(-1).await;
+    }
+}
+
+async fn move_right_rotary_display_square_one_step(direction: i16) {
+    let old_index = RIGHT_ROTARY_SNAKE_INDEX.load(SeqCst);
+    let new_index = (old_index as i16 + direction)
+        .rem_euclid(RIGHT_ROTARY_SNAKE_LEN as i16)
+        as usize;
+
+    RIGHT_ROTARY_SNAKE_INDEX.store(new_index, SeqCst);
+
+    redraw_right_rotary_display_square(
+        old_index,
+        new_index,
+        RIGHT_ROTARY_DISPLAY_COLORS
+            [current_right_rotary_display_color_index()],
+    )
+    .await;
+}
+
+async fn draw_right_rotary_display(
+    snake_index: usize,
+    color_index: usize,
+) {
+    let color = RIGHT_ROTARY_DISPLAY_COLORS[color_index];
+    let (snake_x, snake_y) = right_rotary_snake_position(snake_index);
 
     LARGE_DISPLAY_CH
         .send(LargeDisplayCommand::Clear(LARGE_DISPLAY_BLACK))
         .await;
 
+    draw_right_rotary_snake_track().await;
+
     LARGE_DISPLAY_CH
         .send(LargeDisplayCommand::FillRect {
-            x,
-            y: 80,
-            width: 28,
-            height: 120,
+            x: snake_x,
+            y: snake_y,
+            width: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            height: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            color,
+        })
+        .await;
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::FillRect {
+            x: RIGHT_ROTARY_BAR_X,
+            y: RIGHT_ROTARY_BAR_Y,
+            width: RIGHT_ROTARY_BAR_WIDTH,
+            height: RIGHT_ROTARY_BAR_HEIGHT,
             color,
         })
         .await;
@@ -456,13 +559,81 @@ async fn draw_right_rotary_display_press() {
         .await;
 }
 
+async fn redraw_right_rotary_display_square(
+    old_index: usize,
+    new_index: usize,
+    color: u16,
+) {
+    let (old_x, old_y) = right_rotary_snake_position(old_index);
+    let (new_x, new_y) = right_rotary_snake_position(new_index);
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::FillRect {
+            x: old_x,
+            y: old_y,
+            width: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            height: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            color: LARGE_DISPLAY_DIM_GRAY,
+        })
+        .await;
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::FillRect {
+            x: new_x,
+            y: new_y,
+            width: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            height: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+            color,
+        })
+        .await;
+}
+
+async fn draw_right_rotary_snake_track() {
+    for index in 0..RIGHT_ROTARY_SNAKE_LEN {
+        let (x, y) = right_rotary_snake_position(index);
+
+        LARGE_DISPLAY_CH
+            .send(LargeDisplayCommand::FillRect {
+                x,
+                y,
+                width: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+                height: RIGHT_ROTARY_SNAKE_SQUARE_SIZE,
+                color: LARGE_DISPLAY_DIM_GRAY,
+            })
+            .await;
+    }
+}
+
+fn right_rotary_snake_position(index: usize) -> (u16, u16) {
+    let row = index / RIGHT_ROTARY_SNAKE_COLUMNS;
+    let col = index % RIGHT_ROTARY_SNAKE_COLUMNS;
+    let snaked_col = if row % 2 == 0 {
+        col
+    } else {
+        RIGHT_ROTARY_SNAKE_COLUMNS - 1 - col
+    };
+
+    let cell_stride =
+        RIGHT_ROTARY_SNAKE_CELL_SIZE + RIGHT_ROTARY_SNAKE_CELL_GAP;
+    let x = RIGHT_ROTARY_SNAKE_ORIGIN_X
+        + (snaked_col as u16 * cell_stride);
+    let y = RIGHT_ROTARY_SNAKE_ORIGIN_Y + (row as u16 * cell_stride);
+
+    (x, y)
+}
+
+fn current_right_rotary_display_color_index() -> usize {
+    RIGHT_ROTARY_DISPLAY_INDEX.load(SeqCst)
+        % RIGHT_ROTARY_DISPLAY_COLORS.len()
+}
+
 async fn update_led_scroll_bar(
     old_bar_index: usize,
     new_bar_index: usize,
-    scroll_down_amount: u8,
-    scroll_up_amount: u8,
+    scroll_down_amount: u16,
+    scroll_up_amount: u16,
 ) {
-    let delta = scroll_down_amount as i16 - scroll_up_amount as i16;
+    let delta = scroll_down_amount as i32 - scroll_up_amount as i32;
 
     if delta == 0 {
         return;
