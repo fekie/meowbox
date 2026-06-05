@@ -363,8 +363,13 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         - scroll_up_amount as i8)
         .rem_euclid(6) as usize;
 
-    update_led_scroll_bar(old_led_scroll_index, new_led_scroll_index)
-        .await;
+    update_led_scroll_bar(
+        old_led_scroll_index,
+        new_led_scroll_index,
+        scroll_down_amount,
+        scroll_up_amount,
+    )
+    .await;
 
     LED_SCROLL_INDEX.store(new_led_scroll_index, SeqCst);
 
@@ -407,19 +412,45 @@ const LED_SCROLL_BAR_TOGGLE_TIME: Duration =
 async fn update_led_scroll_bar(
     old_bar_index: usize,
     new_bar_index: usize,
+    scroll_down_amount: u8,
+    scroll_up_amount: u8,
 ) {
-    if old_bar_index == new_bar_index {
+    let delta = scroll_down_amount as i16 - scroll_up_amount as i16;
+
+    if delta == 0 {
         return;
     }
 
-    let led = LED_SCROLL_BAR_MAPPING[new_bar_index];
+    let step_count = match delta.unsigned_abs() as usize
+        % LED_SCROLL_BAR_MAPPING.len()
+    {
+        0 => LED_SCROLL_BAR_MAPPING.len(),
+        steps => steps,
+    };
 
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::TemporaryToggle(
-            led,
-            LED_SCROLL_BAR_TOGGLE_TIME,
-        ))
-        .await;
+    let step_direction = if delta > 0 { 1 } else { -1 };
+    let bar_len = LED_SCROLL_BAR_MAPPING.len() as isize;
+
+    for step in 1..=step_count {
+        let led_index = (old_bar_index as isize
+            + (step as isize * step_direction))
+            .rem_euclid(bar_len) as usize;
+        let led = LED_SCROLL_BAR_MAPPING[led_index];
+
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::TemporaryToggle(
+                led,
+                LED_SCROLL_BAR_TOGGLE_TIME,
+            ))
+            .await;
+    }
+
+    debug_assert_eq!(
+        new_bar_index,
+        (old_bar_index as isize
+            + (step_count as isize * step_direction))
+            .rem_euclid(bar_len) as usize
+    );
 }
 
 // Scrolls down the menu by 1 (which increments the scroll offset)
