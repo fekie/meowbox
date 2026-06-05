@@ -200,7 +200,6 @@ impl Meowbox {
     }
 }
 
-const THUMBWHEEL_ADC_MAX: u16 = 4095;
 const THUMBWHEEL_PRINT_THRESHOLD: usize = 16;
 
 async fn poll_right_thumbwheel_backlight() {
@@ -221,22 +220,7 @@ async fn poll_right_thumbwheel_backlight() {
 
     LAST_RIGHT_THUMBWHEEL_BACKLIGHT.store(backlight, SeqCst);
 
-    let brightness = adc_to_backlight_brightness(right_thumbwheel);
-
-    println!(
-        "right thumbwheel changed: adc={} backlight_brightness={}",
-        right_thumbwheel, brightness
-    );
-
-    BACKLIGHT_CH
-        .send(BacklightCommand::SetBrightness(brightness))
-        .await;
-}
-
-fn adc_to_backlight_brightness(adc: u16) -> u8 {
-    let adc = adc.min(THUMBWHEEL_ADC_MAX) as u32;
-
-    ((adc * u8::MAX as u32) / THUMBWHEEL_ADC_MAX as u32) as u8
+    println!("right thumbwheel changed: adc={}", right_thumbwheel);
 }
 
 #[allow(dead_code)]
