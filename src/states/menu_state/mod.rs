@@ -283,9 +283,9 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 
     if right_rotary_encoder_pressed {
         //println!("AAAA WHY THIS TRIGGER");
-        BUZZER_400_CH
-            .send(BuzzerCommand::Play(Duration::from_millis(2000)))
-            .await;
+        // BUZZER_400_CH
+        //     .send(BuzzerCommand::Play(Duration::from_millis(2000)))
+        //     .await;
         draw_right_rotary_display_press().await;
     }
 
@@ -376,7 +376,9 @@ async fn handle_inputs() -> Result<(), KillSignal> {
     let total_changes = left_rotary_encoder_cw
         + dpad_bottom
         + left_rotary_encoder_ccw
-        + dpad_top;
+        + dpad_top
+        + right_rotary_encoder_cw
+        + right_rotary_encoder_ccw;
     for _ in 0..total_changes {
         BUZZER_2K3_CH.send(BuzzerCommand::Click).await;
     }
