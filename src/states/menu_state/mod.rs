@@ -12,7 +12,10 @@ use crate::{
     hardware::{
         buttons::DPAD_DEBOUNCE,
         buzzer::{BUZZER_2K3_CH, BUZZER_400_CH, BuzzerCommand},
-        large_display::{BACKLIGHT_CH, BacklightCommand},
+        large_display::{
+            BACKLIGHT_CH, BacklightCommand, LARGE_DISPLAY_CH,
+            LargeDisplayCommand,
+        },
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
@@ -28,6 +31,7 @@ use crate::{
 pub mod menu;
 
 pub static LED_SCROLL_INDEX: AtomicUsize = AtomicUsize::new(0);
+static RIGHT_ROTARY_DISPLAY_INDEX: AtomicUsize = AtomicUsize::new(0);
 
 // Light Ring
 impl Meowbox {
@@ -279,6 +283,7 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         BUZZER_400_CH
             .send(BuzzerCommand::Play(Duration::from_millis(2000)))
             .await;
+        draw_right_rotary_display_press().await;
     }
 
     let left_rotary_encoder_cw = InputListener::take_input(
@@ -408,6 +413,48 @@ const LED_SCROLL_BAR_MAPPING: [LED; 6] = [
 
 const LED_SCROLL_BAR_TOGGLE_TIME: Duration =
     Duration::from_millis(100);
+
+const LARGE_DISPLAY_BLACK: u16 = 0x0000;
+const LARGE_DISPLAY_WHITE: u16 = 0xffff;
+const RIGHT_ROTARY_DISPLAY_COLORS: [u16; 6] = [
+    0xf800, // red
+    0xfd20, // orange
+    0xffe0, // yellow
+    0x07e0, // green
+    0x001f, // blue
+    0xffff, // white
+];
+
+async fn draw_right_rotary_display_press() {
+    let index = RIGHT_ROTARY_DISPLAY_INDEX.fetch_add(1, SeqCst)
+        % RIGHT_ROTARY_DISPLAY_COLORS.len();
+    let color = RIGHT_ROTARY_DISPLAY_COLORS[index];
+    let x = 20 + (index as u16 * 32);
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::Clear(LARGE_DISPLAY_BLACK))
+        .await;
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::FillRect {
+            x,
+            y: 80,
+            width: 28,
+            height: 120,
+            color,
+        })
+        .await;
+
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::FillRect {
+            x: 12,
+            y: 220,
+            width: 216,
+            height: 8,
+            color: LARGE_DISPLAY_WHITE,
+        })
+        .await;
+}
 
 async fn update_led_scroll_bar(
     old_bar_index: usize,

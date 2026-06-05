@@ -139,7 +139,7 @@ pub struct NonMutexPeripherals {
     //pub neopixel: SmartLedsAdapter<'static, 25>,
     pub speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
-    //pub large_display: LargeDisplayType,
+    pub large_display: Option<LargeDisplayType>,
     pub buzzer_400: Output<'static>,
     pub buzzer_2k3: Output<'static>,
     pub left_button: Input<'static>,
@@ -384,27 +384,22 @@ pub async fn init_peripherals(
     let interface = SPIInterface::new(spi_device, dc);
     let mut delay = Delay::new();
 
-    match Ili9341::new(
+    let large_display = match Ili9341::new(
         interface,
         rst,
         &mut delay,
         Orientation::Portrait,
         DisplaySize240x320,
     ) {
-        Ok(mut large_display) => {
-            let _ = large_display.draw_raw_iter(
-                50,
-                70,
-                169,
-                189,
-                core::iter::repeat(0xf800).take(120 * 120),
-            );
+        Ok(large_display) => {
             bl_pin.set_high();
+            Some(large_display)
         }
         Err(_) => {
             error!("large display init failed");
+            None
         }
-    }
+    };
 
     //lcd.init(&mut delay).unwrap();
     //lcd.set_backlight(255).unwrap();
@@ -421,8 +416,8 @@ pub async fn init_peripherals(
         flash, //simple_speaker,
         //neopixel,
         speaker,
-        shifter, /*i2s_speaker,
-                  *large_display, */
+        shifter, /* i2s_speaker, */
+        large_display,
         buzzer_400,
         buzzer_2k3,
         left_button,

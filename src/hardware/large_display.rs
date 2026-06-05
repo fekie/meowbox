@@ -23,6 +23,9 @@
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
+use ili9341::ModeState;
+
+use crate::hardware::LargeDisplayType;
 
 pub static BACKLIGHT_CH: Channel<
     CriticalSectionRawMutex,
@@ -30,10 +33,32 @@ pub static BACKLIGHT_CH: Channel<
     8,
 > = Channel::new();
 
+pub static LARGE_DISPLAY_CH: Channel<
+    CriticalSectionRawMutex,
+    LargeDisplayCommand,
+    8,
+> = Channel::new();
+
 use esp_hal::gpio::{self, Level};
 
 pub enum BacklightCommand {
     Toggle,
+}
+
+pub enum LargeDisplayCommand {
+    Clear(u16),
+    FillRect {
+        x: u16,
+        y: u16,
+        width: u16,
+        height: u16,
+        color: u16,
+    },
+    DisplayOn,
+    DisplayOff,
+    InvertOn,
+    InvertOff,
+    SetBrightness(u8),
 }
 
 #[embassy_executor::task]
@@ -52,4 +77,69 @@ pub async fn backlight_listener(mut bl_pin: gpio::Output<'static>) {
             }
         }
     }
+}
+
+#[embassy_executor::task]
+pub async fn large_display_listener(
+    mut display: Option<LargeDisplayType>,
+) {
+    loop {
+        let cmd = LARGE_DISPLAY_CH.receive().await;
+
+        let Some(display) = display.as_mut() else {
+            continue;
+        };
+
+        let result = match cmd {
+            LargeDisplayCommand::Clear(color) => {
+                display.clear_screen(color)
+            }
+            LargeDisplayCommand::FillRect {
+                x,
+                y,
+                width,
+                height,
+                color,
+            } => fill_rect(display, x, y, width, height, color),
+            LargeDisplayCommand::DisplayOn => {
+                display.display_mode(ModeState::On)
+            }
+            LargeDisplayCommand::DisplayOff => {
+                display.display_mode(ModeState::Off)
+            }
+            LargeDisplayCommand::InvertOn => {
+                display.invert_mode(ModeState::On)
+            }
+            LargeDisplayCommand::InvertOff => {
+                display.invert_mode(ModeState::Off)
+            }
+            LargeDisplayCommand::SetBrightness(brightness) => {
+                display.brightness(brightness)
+            }
+        };
+
+        if result.is_err() {
+            defmt::error!("large display command failed");
+        }
+    }
+}
+
+fn fill_rect(
+    display: &mut LargeDisplayType,
+    x: u16,
+    y: u16,
+    width: u16,
+    height: u16,
+    color: u16,
+) -> Result<(), ili9341::DisplayError> {
+    if width == 0 || height == 0 {
+        return Ok(());
+    }
+
+    let x1 = x.saturating_add(width - 1);
+    let y1 = y.saturating_add(height - 1);
+    let pixels = core::iter::repeat(color)
+        .take(width as usize * height as usize);
+
+    display.draw_raw_iter(x, y, x1, y1, pixels)
 }

@@ -25,7 +25,9 @@ use esp_hal::{
 use esp_println as _;
 use esp_println::println;
 use esp_storage::FlashStorage;
-use hardware::large_display::backlight_listener;
+use hardware::large_display::{
+    backlight_listener, large_display_listener,
+};
 use meowbox::{
     hardware::{
         self,
@@ -183,11 +185,16 @@ async fn main(spawner: Spawner) -> ! {
     let _ = spawner
         .spawn(buzzer_400_listener(non_mutex_peripherals.buzzer_400));
 
+    // DO NOT REMOVE. DO NOT PUT POWER INTENSIVE THINGS ABOVE THIS.
+    // OTHERWISE THE PCB MAY BRICK ITSELF
+    safety_startup().await;
+
     let _ = spawner
         .spawn(backlight_listener(non_mutex_peripherals.bl_pin));
 
-    // DO NOT REMOVE
-    safety_startup().await;
+    let _ = spawner.spawn(large_display_listener(
+        non_mutex_peripherals.large_display,
+    ));
 
     let _ = spawner.spawn(dpad_bottom_listener(
         non_mutex_peripherals.dpad_bottom,
