@@ -436,7 +436,6 @@ const LED_SCROLL_BAR_TOGGLE_TIME: Duration =
     Duration::from_millis(100);
 
 const LARGE_DISPLAY_BLACK: u16 = 0x0000;
-const LARGE_DISPLAY_WHITE: u16 = 0xffff;
 const LARGE_DISPLAY_DIM_GRAY: u16 = 0x39e7;
 const RIGHT_ROTARY_DISPLAY_COLORS: [u16; 6] = [
     0xf800, // red
@@ -446,19 +445,15 @@ const RIGHT_ROTARY_DISPLAY_COLORS: [u16; 6] = [
     0x001f, // blue
     0xffff, // white
 ];
-const RIGHT_ROTARY_SNAKE_COLUMNS: usize = 4;
-const RIGHT_ROTARY_SNAKE_ROWS: usize = 5;
+const RIGHT_ROTARY_SNAKE_COLUMNS: usize = 8;
+const RIGHT_ROTARY_SNAKE_ROWS: usize = 10;
 const RIGHT_ROTARY_SNAKE_LEN: usize =
     RIGHT_ROTARY_SNAKE_COLUMNS * RIGHT_ROTARY_SNAKE_ROWS;
-const RIGHT_ROTARY_SNAKE_ORIGIN_X: u16 = 12;
-const RIGHT_ROTARY_SNAKE_ORIGIN_Y: u16 = 28;
-const RIGHT_ROTARY_SNAKE_CELL_SIZE: u16 = 24;
-const RIGHT_ROTARY_SNAKE_CELL_GAP: u16 = 6;
-const RIGHT_ROTARY_SNAKE_SQUARE_SIZE: u16 = 20;
-const RIGHT_ROTARY_BAR_X: u16 = 170;
-const RIGHT_ROTARY_BAR_Y: u16 = 80;
-const RIGHT_ROTARY_BAR_WIDTH: u16 = 28;
-const RIGHT_ROTARY_BAR_HEIGHT: u16 = 120;
+const RIGHT_ROTARY_SNAKE_ORIGIN_X: u16 = 1;
+const RIGHT_ROTARY_SNAKE_ORIGIN_Y: u16 = 1;
+const RIGHT_ROTARY_SNAKE_CELL_STRIDE_X: u16 = 30;
+const RIGHT_ROTARY_SNAKE_CELL_STRIDE_Y: u16 = 32;
+const RIGHT_ROTARY_SNAKE_SQUARE_SIZE: u16 = 28;
 
 async fn draw_right_rotary_display_press() {
     let index = RIGHT_ROTARY_DISPLAY_INDEX.fetch_add(1, SeqCst)
@@ -537,26 +532,6 @@ async fn draw_right_rotary_display(
             color,
         })
         .await;
-
-    LARGE_DISPLAY_CH
-        .send(LargeDisplayCommand::FillRect {
-            x: RIGHT_ROTARY_BAR_X,
-            y: RIGHT_ROTARY_BAR_Y,
-            width: RIGHT_ROTARY_BAR_WIDTH,
-            height: RIGHT_ROTARY_BAR_HEIGHT,
-            color,
-        })
-        .await;
-
-    LARGE_DISPLAY_CH
-        .send(LargeDisplayCommand::FillRect {
-            x: 12,
-            y: 220,
-            width: 216,
-            height: 8,
-            color: LARGE_DISPLAY_WHITE,
-        })
-        .await;
 }
 
 async fn redraw_right_rotary_display_square(
@@ -613,11 +588,10 @@ fn right_rotary_snake_position(index: usize) -> (u16, u16) {
         RIGHT_ROTARY_SNAKE_COLUMNS - 1 - col
     };
 
-    let cell_stride =
-        RIGHT_ROTARY_SNAKE_CELL_SIZE + RIGHT_ROTARY_SNAKE_CELL_GAP;
     let x = RIGHT_ROTARY_SNAKE_ORIGIN_X
-        + (snaked_col as u16 * cell_stride);
-    let y = RIGHT_ROTARY_SNAKE_ORIGIN_Y + (row as u16 * cell_stride);
+        + (snaked_col as u16 * RIGHT_ROTARY_SNAKE_CELL_STRIDE_X);
+    let y = RIGHT_ROTARY_SNAKE_ORIGIN_Y
+        + (row as u16 * RIGHT_ROTARY_SNAKE_CELL_STRIDE_Y);
 
     (x, y)
 }
