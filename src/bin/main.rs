@@ -458,25 +458,16 @@ async fn spawner_stage_one_tasks(spawner: &mut Spawner) {}
 /// ALWAYS, UNDER LITERALLY EVERY CIRCUMSTANCE, CALL THIS.
 /// OTHERWISE, THE BOARD COULD BE BRICKED.
 async fn safety_startup() {
-    // start the two buttons on high
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::SetHigh(LED::ButtonLeft))
-        .await;
-
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::SetHigh(LED::ButtonRight))
-        .await;
-
     const SECONDS: u64 = 5;
     const INTERVAL_MILLIS: u64 = 250;
 
     let cycles = (SECONDS * 1000) / 250;
+    let mut random_state = 0xace1_u16;
 
-    // lasts for 10 seconds.
     for _ in 0..cycles {
         Timer::after_millis(INTERVAL_MILLIS).await;
 
-        toggle_reds().await;
+        random_state = random_startup_lights(random_state).await;
     }
 
     LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
@@ -487,17 +478,44 @@ async fn safety_startup() {
     //}
 }
 
-async fn toggle_reds() {
-    LED_SHIFTER_CHANNEL.send(LedCommand::Toggle(LED::Red)).await;
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::Toggle(LED::DpadBottom))
-        .await;
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::Toggle(LED::ButtonLeft))
-        .await;
-    LED_SHIFTER_CHANNEL
-        .send(LedCommand::Toggle(LED::ButtonRight))
-        .await;
+const STARTUP_LEDS: [LED; 16] = [
+    LED::Red,
+    LED::Orange,
+    LED::YellowCenter,
+    LED::Green,
+    LED::Blue,
+    LED::White,
+    LED::YellowLeft,
+    LED::YellowRight,
+    LED::AmberLeft,
+    LED::AmberRight,
+    LED::ButtonLeft,
+    LED::ButtonRight,
+    LED::DpadLeft,
+    LED::DpadBottom,
+    LED::DpadTop,
+    LED::DpadRight,
+];
+
+async fn random_startup_lights(mut state: u16) -> u16 {
+    LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
+
+    for led in STARTUP_LEDS {
+        state = lfsr_next(state);
+
+        if state & 0b11 == 0 {
+            LED_SHIFTER_CHANNEL.send(LedCommand::SetHigh(led)).await;
+        }
+    }
+
+    state
+}
+
+fn lfsr_next(state: u16) -> u16 {
+    let bit =
+        (state ^ (state >> 2) ^ (state >> 3) ^ (state >> 5)) & 1;
+
+    (state >> 1) | (bit << 15)
 }
 
 // async fn standard_startup(spawner: Spawner) -> ! {
