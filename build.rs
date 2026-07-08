@@ -8,6 +8,18 @@ use image::{AnimationDecoder, codecs::gif::GifDecoder};
 
 const FIRST_POKEMON_ID: u16 = 494;
 const LAST_POKEMON_ID: u16 = 503;
+const POKEMON_NAMES: [&str; 10] = [
+    "Victini",
+    "Snivy",
+    "Servine",
+    "Serperior",
+    "Tepig",
+    "Pignite",
+    "Emboar",
+    "Oshawott",
+    "Dewott",
+    "Samurott",
+];
 
 fn main() {
     linker_be_nice();
@@ -189,9 +201,11 @@ fn generate_cries() {
 
     writeln!(output, "&[").unwrap();
     for (pokemon_id, filename) in cries {
+        let name =
+            POKEMON_NAMES[(pokemon_id - FIRST_POKEMON_ID) as usize];
         writeln!(
             output,
-            "Cry {{ pokemon_id: {pokemon_id}, filename: {filename:?}, samples: include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/sounds/cries/\", {filename:?})) }},"
+            "Cry {{ pokemon_id: {pokemon_id}, name: {name:?}, samples: include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/sounds/cries/\", {filename:?})) }},"
         )
         .unwrap();
     }

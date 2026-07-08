@@ -173,10 +173,9 @@ pub async fn large_display_listener(
                 let sprite = &POKEMON_SPRITES[sprite_index];
                 pokemon_frame = Some((sprite_index, 0));
                 if let Some(display) = display.as_mut() {
-                    let result =
-                        draw_checkerboard(display).and_then(|_| {
-                            draw_pokemon_frame(display, sprite, 0)
-                        });
+                    let result = draw_bars(display).and_then(|_| {
+                        draw_pokemon_frame(display, sprite, 0)
+                    });
                     if result.is_err() {
                         defmt::error!(
                             "failed to start Pokemon animation"
@@ -312,7 +311,7 @@ fn draw_pokemon_frame(
         let width = scale as u16;
         let height = (run * scale) as u16;
         if transparent {
-            fill_checker_rect(display, x, y, width, height)?;
+            fill_bars_rect(display, x, y, width, height)?;
         } else {
             fill_rect(display, x, y, width, height, color)?;
         }
@@ -321,31 +320,27 @@ fn draw_pokemon_frame(
     Ok(())
 }
 
-const CHECKER_SIZE: u16 = 16;
-const CHECKER_GRAY: u16 = 0x8410;
+const BAR_WIDTH: u16 = 16;
+const BAR_GRAY: u16 = 0x8410;
 
-fn draw_checkerboard(
+fn draw_bars(
     display: &mut LargeDisplayType,
 ) -> Result<(), ili9341::DisplayError> {
     display.clear_screen(0)?;
-    for y in (0..320).step_by(CHECKER_SIZE as usize) {
-        for x in (0..240).step_by(CHECKER_SIZE as usize) {
-            if (x / CHECKER_SIZE + y / CHECKER_SIZE) % 2 == 0 {
-                fill_rect(
-                    display,
-                    x,
-                    y,
-                    CHECKER_SIZE.min(240 - x),
-                    CHECKER_SIZE.min(320 - y),
-                    CHECKER_GRAY,
-                )?;
-            }
-        }
+    for x in (0..240).step_by((BAR_WIDTH * 2) as usize) {
+        fill_rect(
+            display,
+            x,
+            0,
+            BAR_WIDTH.min(240 - x),
+            320,
+            BAR_GRAY,
+        )?;
     }
     Ok(())
 }
 
-fn fill_checker_rect(
+fn fill_bars_rect(
     display: &mut LargeDisplayType,
     x: u16,
     y: u16,
@@ -353,36 +348,17 @@ fn fill_checker_rect(
     height: u16,
 ) -> Result<(), ili9341::DisplayError> {
     let x_end = x + width;
-    let y_end = y + height;
-    let mut tile_y = y;
-    while tile_y < y_end {
-        let segment_height = (CHECKER_SIZE - tile_y % CHECKER_SIZE)
-            .min(y_end - tile_y);
-        let mut tile_x = x;
-        while tile_x < x_end {
-            let segment_width = (CHECKER_SIZE
-                - tile_x % CHECKER_SIZE)
-                .min(x_end - tile_x);
-            let color = if (tile_x / CHECKER_SIZE
-                + tile_y / CHECKER_SIZE)
-                % 2
-                == 0
-            {
-                CHECKER_GRAY
-            } else {
-                0
-            };
-            fill_rect(
-                display,
-                tile_x,
-                tile_y,
-                segment_width,
-                segment_height,
-                color,
-            )?;
-            tile_x += segment_width;
-        }
-        tile_y += segment_height;
+    let mut bar_x = x;
+    while bar_x < x_end {
+        let segment_width =
+            (BAR_WIDTH - bar_x % BAR_WIDTH).min(x_end - bar_x);
+        let color = if (bar_x / BAR_WIDTH) % 2 == 0 {
+            BAR_GRAY
+        } else {
+            0
+        };
+        fill_rect(display, bar_x, y, segment_width, height, color)?;
+        bar_x += segment_width;
     }
     Ok(())
 }

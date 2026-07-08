@@ -49,7 +49,7 @@ pub static MEOW_PCM: &[u8] =
 
 pub struct Cry {
     pub pokemon_id: u16,
-    pub filename: &'static str,
+    pub name: &'static str,
     pub samples: &'static [u8],
 }
 

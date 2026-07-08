@@ -1,3 +1,5 @@
+use core::fmt::Write;
+
 use heapless::String;
 use rotary_encoder_embedded::Direction;
 
@@ -15,7 +17,7 @@ use crate::{
     input_listener::{Input, InputListener},
 };
 
-const CRIES_VOLUME_MULTIPLIER: f32 = 0.75;
+const CRIES_VOLUME_MULTIPLIER: f32 = 0.5;
 
 impl Meowbox {
     pub(super) async fn tick_cries(&mut self) {
@@ -102,20 +104,15 @@ impl Meowbox {
                 .await;
         }
 
-        let previous = take_total(Input::DpadLeft)
-            + take_total(Input::RotaryEncoderRotateLeft(
-                Direction::Anticlockwise,
-            ))
-            + take_total(Input::RotaryEncoderRotateRight(
-                Direction::Anticlockwise,
-            ));
-        let next = take_total(Input::DpadRight)
-            + take_total(Input::RotaryEncoderRotateLeft(
-                Direction::Clockwise,
-            ))
-            + take_total(Input::RotaryEncoderRotateRight(
-                Direction::Clockwise,
-            ));
+        let (previous, next) = match take_one_rotary_turn() {
+            Some(Direction::Anticlockwise) => (1, 0),
+            Some(Direction::Clockwise) => (0, 1),
+            Some(Direction::None) => unreachable!(),
+            None => (
+                take_total(Input::DpadLeft),
+                take_total(Input::DpadRight),
+            ),
+        };
         if previous != 0 || next != 0 {
             let count = CRIES.len();
             let next_index = (cry_index + next % count + count
@@ -145,13 +142,46 @@ fn take_total(input: Input) -> usize {
         .unwrap_or(0) as usize
 }
 
+fn take_one_rotary_turn() -> Option<Direction> {
+    const ROTARY_INPUTS: [(Input, Direction); 4] = [
+        (
+            Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
+            Direction::Anticlockwise,
+        ),
+        (
+            Input::RotaryEncoderRotateRight(Direction::Anticlockwise),
+            Direction::Anticlockwise,
+        ),
+        (
+            Input::RotaryEncoderRotateLeft(Direction::Clockwise),
+            Direction::Clockwise,
+        ),
+        (
+            Input::RotaryEncoderRotateRight(Direction::Clockwise),
+            Direction::Clockwise,
+        ),
+    ];
+
+    ROTARY_INPUTS.iter().find_map(|(input, direction)| {
+        InputListener::take_input(*input, false)
+            .ok()
+            .flatten()
+            .map(|_| *direction)
+    })
+}
+
 async fn show_cry(cry_index: usize) {
     let cry = &CRIES[cry_index];
-    let filename = String::try_from(cry.filename).unwrap();
+    let name = String::try_from(cry.name).unwrap();
+    let mut natdex = String::new();
+    write!(natdex, " \nNatDex#: {}", cry.pokemon_id).unwrap();
 
     MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
     MONO_DISPLAY_CH
-        .send(MonoDisplayCommand::WriteStr(filename))
+        .send(MonoDisplayCommand::WriteStr(name))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(natdex))
         .await;
     LARGE_DISPLAY_CH
         .send(LargeDisplayCommand::PlayPokemon(cry.pokemon_id))
