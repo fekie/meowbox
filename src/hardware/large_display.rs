@@ -20,7 +20,10 @@
 //     tft.println("Hello from ESP32-S3", 100, 40);
 // }
 
-use embassy_futures::select::{Either, select};
+use embassy_futures::{
+    select::{Either, select},
+    yield_now,
+};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
@@ -142,13 +145,17 @@ pub async fn large_display_listener(
                     let next_frame =
                         (frame_index + 1) % sprite.delays_ms.len();
                     pokemon_frame = Some((sprite_index, next_frame));
-                    if let Some(display) = display.as_mut()
-                        && draw_pokemon_frame(
+                    if let Some(display) = display.as_mut() {
+                        if draw_pokemon_frame(
                             display, sprite, next_frame,
                         )
+                        .await
                         .is_err()
-                    {
-                        defmt::error!("failed to draw Pokemon frame");
+                        {
+                            defmt::error!(
+                                "failed to draw Pokemon frame"
+                            );
+                        }
                     }
                     continue;
                 }
@@ -173,9 +180,13 @@ pub async fn large_display_listener(
                 let sprite = &POKEMON_SPRITES[sprite_index];
                 pokemon_frame = Some((sprite_index, 0));
                 if let Some(display) = display.as_mut() {
-                    let result = draw_bars(display).and_then(|_| {
-                        draw_pokemon_frame(display, sprite, 0)
-                    });
+                    let result = match draw_bars(display).await {
+                        Ok(()) => {
+                            draw_pokemon_frame(display, sprite, 0)
+                                .await
+                        }
+                        Err(error) => Err(error),
+                    };
                     if result.is_err() {
                         defmt::error!(
                             "failed to start Pokemon animation"
@@ -265,7 +276,7 @@ pub async fn large_display_listener(
     }
 }
 
-fn draw_pokemon_frame(
+async fn draw_pokemon_frame(
     display: &mut LargeDisplayType,
     sprite: &PokemonSprite,
     frame_index: usize,
@@ -315,6 +326,7 @@ fn draw_pokemon_frame(
         } else {
             fill_rect(display, x, y, width, height, color)?;
         }
+        yield_now().await;
     }
 
     Ok(())
@@ -323,19 +335,17 @@ fn draw_pokemon_frame(
 const BAR_WIDTH: u16 = 16;
 const BAR_GRAY: u16 = 0x8410;
 
-fn draw_bars(
+async fn draw_bars(
     display: &mut LargeDisplayType,
 ) -> Result<(), ili9341::DisplayError> {
-    display.clear_screen(0)?;
-    for x in (0..240).step_by((BAR_WIDTH * 2) as usize) {
-        fill_rect(
-            display,
-            x,
-            0,
-            BAR_WIDTH.min(240 - x),
-            320,
-            BAR_GRAY,
-        )?;
+    for x in (0..240).step_by(BAR_WIDTH as usize) {
+        let color = if (x / BAR_WIDTH) % 2 == 0 {
+            BAR_GRAY
+        } else {
+            0
+        };
+        fill_rect(display, x, 0, BAR_WIDTH.min(240 - x), 320, color)?;
+        yield_now().await;
     }
     Ok(())
 }
