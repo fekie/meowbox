@@ -35,7 +35,17 @@ use ili9341::ModeState;
 
 use crate::hardware::LargeDisplayType;
 
-include!(concat!(env!("OUT_DIR"), "/victini.rs"));
+struct PokemonSprite {
+    pokemon_id: u16,
+    width: u32,
+    height: u32,
+    delays_ms: &'static [u64],
+    offsets: &'static [u32],
+    deltas: &'static [u8],
+}
+
+static POKEMON_SPRITES: &[PokemonSprite] =
+    include!(concat!(env!("OUT_DIR"), "/pokemon_sprites.rs"));
 
 pub static BACKLIGHT_CH: Channel<
     CriticalSectionRawMutex,
@@ -77,7 +87,7 @@ pub enum LargeDisplayCommand {
         color: u16,
         scale: u32,
     },
-    PlayVictini,
+    PlayPokemon(u16),
     StopAnimation,
 }
 
@@ -112,12 +122,15 @@ pub async fn backlight_listener(mut bl_pin: gpio::Output<'static>) {
 pub async fn large_display_listener(
     mut display: Option<LargeDisplayType>,
 ) {
-    let mut victini_frame = None;
+    let mut pokemon_frame: Option<(usize, usize)> = None;
 
     loop {
-        let cmd = if let Some(frame_index) = victini_frame {
+        let cmd = if let Some((sprite_index, frame_index)) =
+            pokemon_frame
+        {
+            let sprite = &POKEMON_SPRITES[sprite_index];
             let delay =
-                Duration::from_millis(VICTINI_DELAYS_MS[frame_index]);
+                Duration::from_millis(sprite.delays_ms[frame_index]);
             match select(
                 LARGE_DISPLAY_CH.receive(),
                 Timer::after(delay),
@@ -127,13 +140,15 @@ pub async fn large_display_listener(
                 Either::First(cmd) => cmd,
                 Either::Second(()) => {
                     let next_frame =
-                        (frame_index + 1) % VICTINI_DELAYS_MS.len();
-                    victini_frame = Some(next_frame);
+                        (frame_index + 1) % sprite.delays_ms.len();
+                    pokemon_frame = Some((sprite_index, next_frame));
                     if let Some(display) = display.as_mut()
-                        && draw_victini_frame(display, next_frame)
-                            .is_err()
+                        && draw_pokemon_frame(
+                            display, sprite, next_frame,
+                        )
+                        .is_err()
                     {
-                        defmt::error!("failed to draw Victini frame");
+                        defmt::error!("failed to draw Pokemon frame");
                     }
                     continue;
                 }
@@ -143,22 +158,35 @@ pub async fn large_display_listener(
         };
 
         match cmd {
-            LargeDisplayCommand::PlayVictini => {
-                victini_frame = Some(0);
+            LargeDisplayCommand::PlayPokemon(pokemon_id) => {
+                let Some(sprite_index) =
+                    POKEMON_SPRITES.iter().position(|sprite| {
+                        sprite.pokemon_id == pokemon_id
+                    })
+                else {
+                    defmt::error!(
+                        "no sprite for Pokemon {}",
+                        pokemon_id
+                    );
+                    continue;
+                };
+                let sprite = &POKEMON_SPRITES[sprite_index];
+                pokemon_frame = Some((sprite_index, 0));
                 if let Some(display) = display.as_mut() {
-                    let result = display
-                        .clear_screen(0)
-                        .and_then(|_| draw_victini_frame(display, 0));
+                    let result =
+                        draw_checkerboard(display).and_then(|_| {
+                            draw_pokemon_frame(display, sprite, 0)
+                        });
                     if result.is_err() {
                         defmt::error!(
-                            "failed to start Victini animation"
+                            "failed to start Pokemon animation"
                         );
                     }
                 }
                 continue;
             }
             LargeDisplayCommand::StopAnimation => {
-                victini_frame = None;
+                pokemon_frame = None;
                 continue;
             }
             _ => {}
@@ -228,7 +256,7 @@ pub async fn large_display_listener(
                 .draw(&mut rotated)
                 .map(|_| ())
             }
-            LargeDisplayCommand::PlayVictini
+            LargeDisplayCommand::PlayPokemon(_)
             | LargeDisplayCommand::StopAnimation => unreachable!(),
         };
 
@@ -238,34 +266,38 @@ pub async fn large_display_listener(
     }
 }
 
-fn draw_victini_frame(
+fn draw_pokemon_frame(
     display: &mut LargeDisplayType,
+    sprite: &PokemonSprite,
     frame_index: usize,
 ) -> Result<(), ili9341::DisplayError> {
-    let start = VICTINI_OFFSETS[frame_index] as usize;
-    let end = VICTINI_OFFSETS[frame_index + 1] as usize;
-    let frame = &VICTINI_DELTAS[start..end];
-    let scale =
-        (240 / VICTINI_HEIGHT).min(320 / VICTINI_WIDTH).max(1);
+    let start = sprite.offsets[frame_index] as usize;
+    let end = sprite.offsets[frame_index + 1] as usize;
+    let frame = &sprite.deltas[start..end];
+    let scale = (240 / sprite.height).min(320 / sprite.width).max(1);
     let origin = Point::new(
-        ((240 - VICTINI_HEIGHT * scale) / 2) as i32,
-        ((320 - VICTINI_WIDTH * scale) / 2) as i32,
+        ((240 - sprite.height * scale) / 2) as i32,
+        ((320 - sprite.width * scale) / 2) as i32,
     );
     let mut records = frame.chunks_exact(4).peekable();
     while let Some(bytes) = records.next() {
-        let index = u16::from_le_bytes([bytes[0], bytes[1]]) as u32;
+        let encoded_index = u16::from_le_bytes([bytes[0], bytes[1]]);
+        let transparent = encoded_index & 0x8000 != 0;
+        let index = (encoded_index & 0x7fff) as u32;
         let color = u16::from_le_bytes([bytes[2], bytes[3]]);
-        let source_x = index % VICTINI_WIDTH;
-        let source_y = index / VICTINI_WIDTH;
+        let source_x = index % sprite.width;
+        let source_y = index / sprite.width;
         let mut run = 1;
 
         while let Some(next) = records.peek() {
-            let next_index =
-                u16::from_le_bytes([next[0], next[1]]) as u32;
+            let next_encoded = u16::from_le_bytes([next[0], next[1]]);
+            let next_transparent = next_encoded & 0x8000 != 0;
+            let next_index = (next_encoded & 0x7fff) as u32;
             let next_color = u16::from_le_bytes([next[2], next[3]]);
             if next_index != index + run
-                || next_index / VICTINI_WIDTH != source_y
-                || next_color != color
+                || next_index / sprite.width != source_y
+                || next_transparent != transparent
+                || (!transparent && next_color != color)
             {
                 break;
             }
@@ -273,18 +305,85 @@ fn draw_victini_frame(
             run += 1;
         }
 
-        fill_rect(
-            display,
-            (origin.x as u32 + source_y * scale) as u16,
-            (origin.y as u32
-                + (VICTINI_WIDTH - source_x - run) * scale)
-                as u16,
-            scale as u16,
-            (run * scale) as u16,
-            color,
-        )?;
+        let x = (origin.x as u32 + source_y * scale) as u16;
+        let y = (origin.y as u32
+            + (sprite.width - source_x - run) * scale)
+            as u16;
+        let width = scale as u16;
+        let height = (run * scale) as u16;
+        if transparent {
+            fill_checker_rect(display, x, y, width, height)?;
+        } else {
+            fill_rect(display, x, y, width, height, color)?;
+        }
     }
 
+    Ok(())
+}
+
+const CHECKER_SIZE: u16 = 16;
+const CHECKER_GRAY: u16 = 0x8410;
+
+fn draw_checkerboard(
+    display: &mut LargeDisplayType,
+) -> Result<(), ili9341::DisplayError> {
+    display.clear_screen(0)?;
+    for y in (0..320).step_by(CHECKER_SIZE as usize) {
+        for x in (0..240).step_by(CHECKER_SIZE as usize) {
+            if (x / CHECKER_SIZE + y / CHECKER_SIZE) % 2 == 0 {
+                fill_rect(
+                    display,
+                    x,
+                    y,
+                    CHECKER_SIZE.min(240 - x),
+                    CHECKER_SIZE.min(320 - y),
+                    CHECKER_GRAY,
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn fill_checker_rect(
+    display: &mut LargeDisplayType,
+    x: u16,
+    y: u16,
+    width: u16,
+    height: u16,
+) -> Result<(), ili9341::DisplayError> {
+    let x_end = x + width;
+    let y_end = y + height;
+    let mut tile_y = y;
+    while tile_y < y_end {
+        let segment_height = (CHECKER_SIZE - tile_y % CHECKER_SIZE)
+            .min(y_end - tile_y);
+        let mut tile_x = x;
+        while tile_x < x_end {
+            let segment_width = (CHECKER_SIZE
+                - tile_x % CHECKER_SIZE)
+                .min(x_end - tile_x);
+            let color = if (tile_x / CHECKER_SIZE
+                + tile_y / CHECKER_SIZE)
+                % 2
+                == 0
+            {
+                CHECKER_GRAY
+            } else {
+                0
+            };
+            fill_rect(
+                display,
+                tile_x,
+                tile_y,
+                segment_width,
+                segment_height,
+                color,
+            )?;
+            tile_x += segment_width;
+        }
+        tile_y += segment_height;
+    }
     Ok(())
 }
 

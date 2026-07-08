@@ -48,6 +48,7 @@ pub static MEOW_PCM: &[u8] =
     include_bytes!("../../../sounds/meow.pcm");
 
 pub struct Cry {
+    pub pokemon_id: u16,
     pub filename: &'static str,
     pub samples: &'static [u8],
 }
@@ -59,6 +60,10 @@ pub static CRIES: &[Cry] =
 pub enum SpeakerCommand {
     Sine440Hz(embassy_time::Duration),
     PlayPcm(&'static [u8]),
+    PlayPcmWithVolume {
+        samples: &'static [u8],
+        volume_multiplier: f32,
+    },
 }
 
 pub(super) type SpeakerType = I2s<'static, Async>;
@@ -171,7 +176,43 @@ pub async fn speaker_task(speaker: SpeakerType) {
                     push_all(&mut transfer, &silence).await;
                 }
             }
+            SpeakerCommand::PlayPcmWithVolume {
+                samples,
+                volume_multiplier,
+            } => {
+                let mut scaled_buffer = [0u8; 2048];
+
+                for buffer in samples.chunks(scaled_buffer.len()) {
+                    let output = &mut scaled_buffer[..buffer.len()];
+                    scale_pcm_s16le(
+                        buffer,
+                        output,
+                        volume_multiplier,
+                    );
+                    push_all(&mut transfer, output).await;
+                }
+
+                let silence = [0u8; 2048];
+                for _ in 0..2 {
+                    push_all(&mut transfer, &silence).await;
+                }
+            }
         }
+    }
+}
+
+fn scale_pcm_s16le(input: &[u8], output: &mut [u8], multiplier: f32) {
+    output.copy_from_slice(input);
+
+    for (input_sample, output_sample) in
+        input.chunks_exact(2).zip(output.chunks_exact_mut(2))
+    {
+        let sample =
+            i16::from_le_bytes([input_sample[0], input_sample[1]]);
+        let scaled = (sample as f32 * multiplier)
+            .clamp(i16::MIN as f32, i16::MAX as f32)
+            as i16;
+        output_sample.copy_from_slice(&scaled.to_le_bytes());
     }
 }
 

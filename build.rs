@@ -6,53 +6,96 @@ use std::{
 
 use image::{AnimationDecoder, codecs::gif::GifDecoder};
 
-const FIRST_CRY_ID: u16 = 387;
-// The linker provides a 4 MiB flash window shared by code and static
-// data. Leave enough room for the firmware while maximizing the
-// number of cries.
-const MAX_EMBEDDED_CRY_BYTES: u64 = 3_500 * 1_024;
+const FIRST_POKEMON_ID: u16 = 494;
+const LAST_POKEMON_ID: u16 = 503;
 
 fn main() {
     linker_be_nice();
     generate_cries();
-    generate_victini_animation();
+    generate_pokemon_sprites();
     println!("cargo:rustc-link-arg=-Tdefmt.x");
     // make sure linkall.x is the last linker script (otherwise might
     // cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
 }
 
-fn generate_victini_animation() {
-    const ASSET_PATH: &str = "assets/victini.gif";
-
-    println!("cargo:rerun-if-changed={ASSET_PATH}");
-
-    let decoder = GifDecoder::new(BufReader::new(
-        File::open(ASSET_PATH).expect("failed to open Victini GIF"),
-    ))
-    .expect("failed to decode Victini GIF");
-    let frames = decoder
-        .into_frames()
-        .collect_frames()
-        .expect("failed to decode Victini GIF frames");
-    assert!(!frames.is_empty(), "Victini GIF has no frames");
-
-    let width = frames[0].buffer().width();
-    let height = frames[0].buffer().height();
+fn generate_pokemon_sprites() {
     let output_dir =
         PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
-    let mut deltas = BufWriter::new(
-        File::create(output_dir.join("victini.delta565"))
-            .expect("failed to create Victini delta data"),
+    let mut metadata = BufWriter::new(
+        File::create(output_dir.join("pokemon_sprites.rs"))
+            .expect("failed to create Pokemon sprite metadata"),
     );
+    writeln!(metadata, "&[").unwrap();
+
+    for pokemon_id in FIRST_POKEMON_ID..=LAST_POKEMON_ID {
+        let asset_path =
+            format!("assets/pokemon-sprites/{pokemon_id}.gif");
+        println!("cargo:rerun-if-changed={asset_path}");
+
+        let decoder = GifDecoder::new(BufReader::new(
+            File::open(&asset_path).unwrap_or_else(|error| {
+                panic!("failed to open {asset_path}: {error}")
+            }),
+        ))
+        .unwrap_or_else(|error| {
+            panic!("failed to decode {asset_path}: {error}")
+        });
+        let frames = decoder
+            .into_frames()
+            .collect_frames()
+            .unwrap_or_else(|error| {
+                panic!("failed to decode frames from {asset_path}: {error}")
+            });
+        assert!(!frames.is_empty(), "{asset_path} has no frames");
+
+        let width = frames[0].buffer().width();
+        let height = frames[0].buffer().height();
+        assert!(
+            width * height < 1 << 15,
+            "{asset_path} is too large for the sprite delta format"
+        );
+        let delta_filename = format!("pokemon_{pokemon_id}.delta565");
+        let mut deltas = BufWriter::new(
+            File::create(output_dir.join(&delta_filename))
+                .expect("failed to create Pokemon sprite delta data"),
+        );
+        let (delays_ms, offsets) = write_sprite_deltas(
+            &asset_path,
+            frames,
+            width,
+            height,
+            &mut deltas,
+        );
+        deltas
+            .flush()
+            .expect("failed to flush Pokemon sprite delta data");
+
+        writeln!(
+            metadata,
+            "PokemonSprite {{ pokemon_id: {pokemon_id}, width: {width}, height: {height}, delays_ms: &{delays_ms:?}, offsets: &{offsets:?}, deltas: include_bytes!(concat!(env!(\"OUT_DIR\"), \"/{delta_filename}\")) }},"
+        )
+        .unwrap();
+    }
+
+    writeln!(metadata, "]").unwrap();
+}
+
+fn write_sprite_deltas(
+    asset_path: &str,
+    frames: Vec<image::Frame>,
+    width: u32,
+    height: u32,
+    deltas: &mut impl Write,
+) -> (Vec<u64>, Vec<u32>) {
     let mut delays_ms = Vec::with_capacity(frames.len());
     let mut offsets = Vec::with_capacity(frames.len() + 1);
-    let mut previous = vec![0; (width * height) as usize];
+    let mut previous = vec![0_u32; (width * height) as usize];
     let mut bytes_written = 0_u32;
 
     for frame in frames {
-        assert_eq!(frame.buffer().width(), width);
-        assert_eq!(frame.buffer().height(), height);
+        assert_eq!(frame.buffer().width(), width, "{asset_path}");
+        assert_eq!(frame.buffer().height(), height, "{asset_path}");
 
         let (numerator, denominator) = frame.delay().numer_denom_ms();
         let delay_ms = ((numerator as u64 + denominator as u64 - 1)
@@ -65,56 +108,36 @@ fn generate_victini_animation() {
         for (index, pixel) in frame.into_buffer().pixels().enumerate()
         {
             let [red, green, blue, alpha] = pixel.0;
-            let color = if alpha < 128 {
-                0
+            let transparent = alpha < 128;
+            let color = if transparent {
+                0_u16
             } else {
                 ((red as u16 >> 3) << 11)
                     | ((green as u16 >> 2) << 5)
                     | (blue as u16 >> 3)
             };
-            if !first_frame && color == previous[index] {
+            let state = color as u32 | ((transparent as u32) << 16);
+            if !first_frame && state == previous[index] {
                 continue;
             }
 
-            previous[index] = color;
+            previous[index] = state;
+            let encoded_index =
+                index as u16 | ((transparent as u16) << 15);
             deltas
-                .write_all(&(index as u16).to_le_bytes())
-                .expect("failed to write Victini delta index");
+                .write_all(&encoded_index.to_le_bytes())
+                .expect("failed to write Pokemon sprite delta index");
             deltas
                 .write_all(&color.to_le_bytes())
-                .expect("failed to write Victini delta color");
+                .expect("failed to write Pokemon sprite delta color");
             bytes_written += 4;
         }
     }
     offsets.push(bytes_written);
-    deltas.flush().expect("failed to flush Victini delta data");
 
-    let mut metadata = BufWriter::new(
-        File::create(output_dir.join("victini.rs"))
-            .expect("failed to create Victini metadata"),
-    );
-    writeln!(metadata, "pub const VICTINI_WIDTH: u32 = {width};")
-        .unwrap();
-    writeln!(metadata, "pub const VICTINI_HEIGHT: u32 = {height};")
-        .unwrap();
-    writeln!(
-        metadata,
-        "pub const VICTINI_DELAYS_MS: &[u64] = &{delays_ms:?};"
-    )
-    .unwrap();
-    writeln!(
-        metadata,
-        "pub const VICTINI_OFFSETS: &[u32] = &{offsets:?};"
-    )
-    .unwrap();
-    writeln!(
-        metadata,
-        "pub static VICTINI_DELTAS: &[u8] = include_bytes!(concat!(env!(\"OUT_DIR\"), \"/victini.delta565\"));"
-    )
-    .unwrap();
+    (delays_ms, offsets)
 }
 
-// currently generates around ~40 random cries for the pool
 fn generate_cries() {
     println!("cargo:rerun-if-changed=sounds/cries");
 
@@ -123,17 +146,13 @@ fn generate_cries() {
         .map(|entry| {
             let entry =
                 entry.expect("failed to read cry directory entry");
-            let size = entry
-                .metadata()
-                .expect("failed to read cry metadata")
-                .len();
             let filename = entry
                 .file_name()
                 .into_string()
                 .expect("cry filenames must be valid UTF-8");
-            (filename, size)
+            filename
         })
-        .filter_map(|(filename, size)| {
+        .filter_map(|filename| {
             if !filename.ends_with(".pcm") {
                 return None;
             }
@@ -145,37 +164,21 @@ fn generate_cries() {
                 .parse::<u16>()
                 .ok()?;
 
-            (id >= FIRST_CRY_ID).then_some((id, filename, size))
+            (FIRST_POKEMON_ID..=LAST_POKEMON_ID)
+                .contains(&id)
+                .then_some((id, filename))
         })
         .collect::<Vec<_>>();
 
-    cries.sort_by(
-        |(left_id, left_name, left_size),
-         (right_id, right_name, right_size)| {
-            left_size
-                .cmp(right_size)
-                .then_with(|| left_id.cmp(right_id))
-                .then_with(|| left_name.cmp(right_name))
-        },
+    cries.sort_by_key(|(id, _)| *id);
+    assert_eq!(
+        cries.len(),
+        (LAST_POKEMON_ID - FIRST_POKEMON_ID + 1) as usize,
+        "expected exactly one cry for each Pokemon from {FIRST_POKEMON_ID} through {LAST_POKEMON_ID}"
     );
-
-    let mut embedded_bytes = 0;
-    cries.retain(|(_, _, size)| {
-        if embedded_bytes + *size > MAX_EMBEDDED_CRY_BYTES {
-            return false;
-        }
-
-        embedded_bytes += *size;
-        true
-    });
-    cries.sort_by(
-        |(left_id, left_name, _), (right_id, right_name, _)| {
-            left_id
-                .cmp(right_id)
-                .then_with(|| left_name.cmp(right_name))
-        },
-    );
-    assert!(!cries.is_empty(), "no Pokemon cries matched the filter");
+    for (offset, (id, _)) in cries.iter().enumerate() {
+        assert_eq!(*id, FIRST_POKEMON_ID + offset as u16);
+    }
 
     let output_path =
         PathBuf::from(std::env::var_os("OUT_DIR").unwrap())
@@ -185,10 +188,10 @@ fn generate_cries() {
     );
 
     writeln!(output, "&[").unwrap();
-    for (_, filename, _) in cries {
+    for (pokemon_id, filename) in cries {
         writeln!(
             output,
-            "Cry {{ filename: {filename:?}, samples: include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/sounds/cries/\", {filename:?})) }},"
+            "Cry {{ pokemon_id: {pokemon_id}, filename: {filename:?}, samples: include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/sounds/cries/\", {filename:?})) }},"
         )
         .unwrap();
     }

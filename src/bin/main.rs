@@ -162,9 +162,9 @@ async fn main(spawner: Spawner) -> ! {
 
     //let _ = spawner.spawn(led_rotation());
 
-    // let _ = spawner.spawn(neopixel_command_listener(
-    //     non_mutex_peripherals.neopixel,
-    // ));
+    let _ = spawner.spawn(neopixel_command_listener(
+        non_mutex_peripherals.neopixel,
+    ));
 
     let _ = spawner
         .spawn(led_shifter_listener(non_mutex_peripherals.shifter));
