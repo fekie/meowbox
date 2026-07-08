@@ -439,7 +439,7 @@ async fn handle_inputs() -> Result<(), KillSignal> {
 
     if button_left.is_some() {
         SPEAKER_CHANNEL
-            .send(SpeakerCommand::Sine440Hz(Duration::from_secs(5)))
+            .send(SpeakerCommand::Sine440Hz(Duration::from_secs(1)))
             .await;
         println!("hit left button");
     }

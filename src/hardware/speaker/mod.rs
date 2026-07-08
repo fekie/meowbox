@@ -1,24 +1,22 @@
 use core::f32::consts::PI;
 
-use defmt::{info, println, warn};
-use embassy_executor::SendSpawner;
+use defmt::warn;
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
 use embassy_time::{Duration, Instant};
 use esp_hal::{
-    Async, Blocking,
-    clock::CpuClock,
+    Async,
     dma::DmaDescriptor,
     gpio::{
         Level, Output, OutputConfig, OutputSignal,
         interconnect::PeripheralOutput as _,
     },
-    i2s::master::{Config, DataFormat, I2s, I2sTx},
-    peripherals::{
-        DMA_CH0, GPIO37, GPIO38, GPIO39, GPIO40, GPIO41, GPIO42, I2S0,
+    i2s::master::{
+        Config, DataFormat, I2s, I2sTx,
+        asynch::I2sWriteDmaTransferAsync,
     },
-    rng::Rng,
+    peripherals::{DMA_CH0, GPIO39, GPIO40, GPIO41, GPIO42, I2S0},
     time::Rate,
 };
 use micromath::F32Ext;
@@ -61,7 +59,6 @@ pub const SPEAKER_SAMPLE_RATE: u32 = 44_100;
 // occassionally filling a buffer.
 static DESCRIPTORS: StaticCell<[DmaDescriptor; 8]> =
     StaticCell::new();
-static BUFFER: StaticCell<[u8; 2048]> = StaticCell::new();
 
 // The 'a lifetime is used because the I2s interface the function
 // returns can only last for as long as the gpio interfaces do.
@@ -121,20 +118,56 @@ pub async fn speaker_task(speaker: SpeakerType) {
     //     esp_hal::dma_buffers!(4096, 4096);
     //let buffer: &mut [u8; 2048] = BUFFER.init([0u8; 2048]);
 
-    let mut speaker_tx: SpeakerTxType =
-        speaker.i2s_tx.build(descriptors);
+    let speaker_tx: SpeakerTxType = speaker.i2s_tx.build(descriptors);
+    let mut dma_buffer = [0u8; 4096];
+    let mut transfer = speaker_tx
+        .write_dma_circular_async(&mut dma_buffer)
+        .unwrap();
 
-    //loop {
-    let cmd = SPEAKER_CHANNEL.receive().await;
+    loop {
+        let cmd = SPEAKER_CHANNEL.receive().await;
 
-    // do a check to see if the command was to switch operating
-    // modes (which requires ownership). Otherwise, execute the
-    // command as normal.
-    match cmd {
-        SpeakerCommand::Sine440Hz(duration) => {
-            play_sine440hz_async(speaker_tx, Duration::from_secs(10))
-                .await;
-        } // }
+        match cmd {
+            SpeakerCommand::Sine440Hz(duration) => {
+                let mut buffer = [0u8; 2048];
+                let mut phase = 0.0f32;
+                let sample_rate = SPEAKER_SAMPLE_RATE as f32;
+                let start = Instant::now();
+
+                while start.elapsed() < duration {
+                    fill_sine(
+                        &mut buffer,
+                        &mut phase,
+                        440.0,
+                        sample_rate,
+                    );
+                    push_all(&mut transfer, &buffer).await;
+                }
+
+                buffer.fill(0);
+                for _ in 0..2 {
+                    push_all(&mut transfer, &buffer).await;
+                }
+            }
+        }
+    }
+}
+
+async fn push_all(
+    transfer: &mut I2sWriteDmaTransferAsync<'_, &mut [u8; 4096]>,
+    buffer: &[u8],
+) {
+    let mut offset = 0;
+
+    while offset < buffer.len() {
+        match transfer.push(&buffer[offset..]).await {
+            Ok(0) => {}
+            Ok(written) => offset += written,
+            Err(_) => {
+                warn!("speaker error");
+                return;
+            }
+        }
     }
 }
 
@@ -181,82 +214,6 @@ fn play_sine440hz(
     }
 }
 
-async fn play_sine440hz_async(
-    speaker_tx: SpeakerTxType,
-    duration: Duration,
-) {
-    const BUF_SIZE: usize = 16384;
-
-    let mut buf_a = [0u8; BUF_SIZE];
-
-    let mut phase = 0.0f32;
-    let sample_rate = SPEAKER_SAMPLE_RATE as f32;
-    let freq = 440.0;
-
-    let start = Instant::now();
-
-    //fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
-
-    let mut ring_buffer = [0u8; 16384];
-
-    let mut transfer = speaker_tx
-        .write_dma_circular_async(&mut ring_buffer)
-        .unwrap();
-
-    let mut i = 0;
-
-    while start.elapsed() < duration {
-        // fill next buffer
-        // fill_sine(&mut buf_a, &mut phase, freq, sample_rate);
-
-        let bytes_available_count = transfer
-            .available()
-            .await
-            .unwrap_or_default()
-            .clamp(0, BUF_SIZE);
-
-        let mut end_index = i + bytes_available_count;
-
-        if end_index > buf_a.len() {
-            end_index = buf_a.len()
-        }
-
-        println!("{}..{}", i, end_index);
-        println!("bytes available = {}", bytes_available_count);
-
-        if bytes_available_count == 0 {
-            continue;
-        }
-
-        fill_sine(
-            &mut buf_a[i..end_index],
-            &mut phase,
-            freq,
-            sample_rate,
-        );
-
-        if let Err(e) = transfer.push(&buf_a[i..end_index]).await {
-            println!("{}", e);
-            warn!("speaker error");
-        }
-
-        i += bytes_available_count;
-
-        if i >= buf_a.len() {
-            i = 0;
-        }
-
-        //apply_fade_edges(fill, FADE_SAMPLES);
-
-        //transfer.unwrap();
-
-        //core::mem::swap(&mut current, &mut next);
-        // core::mem::swap(&mut next, &mut fill);
-    }
-
-    info!("fuck");
-}
-
 fn fill_sine(
     buffer: &mut [u8],
     phase: &mut f32,
@@ -264,16 +221,13 @@ fn fill_sine(
     sample_rate: f32,
 ) {
     for chunk in buffer.chunks_exact_mut(4) {
-        let sample = (phase.sin() * 8000.0) as i16;
+        let sample = (phase.sin() * 16000.0) as i16;
         let s = sample.to_le_bytes();
 
-        // LEFT channel
         chunk[0] = s[0];
         chunk[1] = s[1];
-
-        // RIGHT channel (silence)
-        chunk[2] = 0;
-        chunk[3] = 0;
+        chunk[2] = s[0];
+        chunk[3] = s[1];
 
         *phase += 2.0 * PI * freq / sample_rate;
         if *phase >= 2.0 * PI {
