@@ -12,7 +12,9 @@ use crate::{leds::LightRingState, physics::PhysicsResources};
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring_loop;
+pub mod light_show;
 pub mod menu_state;
+pub mod unimplemented;
 
 /// Static cells are used in this program to hold values we want
 /// to be on the stack, while also being able to juggle around a
@@ -73,6 +75,10 @@ impl Meowbox {
             State::FlowField(_, _) => self.tick_flow_field().await,
             State::ErrorState(_) => self.tick_error_state().await,
             State::Menu(_, _) => self.tick_menu_state().await,
+            State::LightShow(_) => self.tick_light_show().await,
+            State::Unimplemented(_) => {
+                self.tick_unimplemented().await
+            }
             // If we dont yet have the state implemented, go to the
             // error state.
             _ => {
@@ -109,6 +115,12 @@ impl Meowbox {
                     flow_field_state,
                 );
             }
+            State::LightShow(_) => {
+                self.state = State::LightShow(Stage::Shutdown);
+            }
+            State::Unimplemented(_) => {
+                self.state = State::Unimplemented(Stage::Shutdown);
+            }
             State::Debug(_, _, _) => {
                 self.state =
                     State::ErrorState(ErrorStateType::Unknown);
@@ -135,6 +147,8 @@ pub enum State {
     Menu(Stage, MenuState),
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
+    LightShow(Stage),
+    Unimplemented(Stage),
     /// Does both the light ring and the flow field. This is a good
     /// way to see if the device is still "running" properly
     Debug(Stage, LightRingState, FlowFieldState),

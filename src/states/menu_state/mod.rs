@@ -52,6 +52,9 @@ impl Meowbox {
     }
 
     async fn setup_menu_state(&mut self) {
+        BACKLIGHT_CH.send(BacklightCommand::SetLow).await;
+        LARGE_DISPLAY_CH.send(LargeDisplayCommand::DisplayOn).await;
+
         LED_SHIFTER_CHANNEL
             .send(LedCommand::SetHigh(LED::ButtonRight))
             .await;
@@ -74,7 +77,13 @@ impl Meowbox {
 
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Init).await;
 
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::SetDisplayOn(true))
+            .await;
+
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
+        MenuStatusHandle::new().set_needs_update(true);
 
         // do blank line
         MONO_DISPLAY_CH
@@ -102,6 +111,38 @@ impl Meowbox {
         poll_right_thumbwheel_backlight().await;
 
         let _ = handle_inputs().await;
+
+        if InputListener::take_input(Input::ButtonRight, true)
+            .ok()
+            .flatten()
+            .is_some()
+        {
+            let menu_status_handle = MenuStatusHandle::new();
+            let selected = self
+                .resources
+                .menu_resoures
+                .menu_tree
+                .layer_0
+                .get(menu_status_handle.scroll())
+                .copied();
+
+            self.next_state = match selected {
+                Some(MenuGeneralItem::MenuProgram(
+                    MenuProgram::LightShow,
+                )) => Some(State::LightShow(Stage::Setup)),
+                Some(_) => Some(State::Unimplemented(Stage::Setup)),
+                None => None,
+            };
+
+            if self.next_state.is_some() {
+                self.needs_to_shutdown = true;
+                return;
+            }
+
+            SPEAKER_CHANNEL
+                .send(SpeakerCommand::PlayPcm(MEOW_PCM))
+                .await;
+        }
 
         let menu_status_handle = MenuStatusHandle::new();
 
@@ -442,17 +483,6 @@ async fn handle_inputs() -> Result<(), KillSignal> {
             .send(SpeakerCommand::Sine440Hz(Duration::from_secs(1)))
             .await;
         println!("hit left button");
-    }
-
-    let button_right =
-        InputListener::take_input(Input::ButtonRight, true)?;
-
-    if button_right.is_some() {
-        SPEAKER_CHANNEL
-            .send(SpeakerCommand::PlayPcm(MEOW_PCM))
-            .await;
-
-        println!("hit right button");
     }
 
     Ok(())

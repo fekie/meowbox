@@ -41,6 +41,7 @@ pub enum MonoDisplayCommand {
     Init,
     /// Usable by Graphics and Terminal
     Clear,
+    SetDisplayOn(bool),
     /// Usable by Graphics
     SwitchToTerminal,
     /// Usable by Terminal
@@ -143,6 +144,9 @@ impl MonoDisplay {
         match cmd {
             MonoDisplayCommand::Init => self.cmd_init().await,
             MonoDisplayCommand::Clear => self.cmd_clear().await,
+            MonoDisplayCommand::SetDisplayOn(on) => {
+                self.cmd_set_display_on(on).await
+            }
             MonoDisplayCommand::WriteStr(s) => {
                 self.cmd_write_str(s).await
             }
@@ -197,6 +201,17 @@ impl MonoDisplay {
                     info!("error on flush");
                 }
             }
+        }
+    }
+
+    async fn cmd_set_display_on(&mut self, on: bool) {
+        let result = match self {
+            MonoDisplay::Terminal(x) => x.set_display_on(on).await,
+            MonoDisplay::Graphics(x) => x.set_display_on(on).await,
+        };
+
+        if result.is_err() {
+            info!("error changing display power state");
         }
     }
 
