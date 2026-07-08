@@ -1,12 +1,14 @@
 use core::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
 use embassy_time::Instant;
+use heapless::String;
 
 use super::{MenuState, Meowbox, Stage, State};
 use crate::{
     hardware::{
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
-        speaker::{CRIES_PCM, SPEAKER_CHANNEL, SpeakerCommand},
+        mono_display::{MONO_DISPLAY_CH, MonoDisplayCommand},
+        speaker::{CRIES, SPEAKER_CHANNEL, SpeakerCommand},
     },
     input_listener::{Input, InputListener},
 };
@@ -34,6 +36,15 @@ impl Meowbox {
         LED_SHIFTER_CHANNEL
             .send(LedCommand::SetHigh(LED::ButtonRight))
             .await;
+
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::SwitchToTerminal)
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::SetDisplayOn(true))
+            .await;
+        MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+
         self.state = State::Cries(Stage::Execution);
     }
 
@@ -54,8 +65,17 @@ impl Meowbox {
             .flatten()
             .is_some()
         {
-            let cry = CRIES_PCM[random_cry_index()];
-            SPEAKER_CHANNEL.send(SpeakerCommand::PlayPcm(cry)).await;
+            let cry_index = random_cry_index();
+            let cry = &CRIES[cry_index];
+            let filename = String::try_from(cry.filename).unwrap();
+
+            MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+            MONO_DISPLAY_CH
+                .send(MonoDisplayCommand::WriteStr(filename))
+                .await;
+            SPEAKER_CHANNEL
+                .send(SpeakerCommand::PlayPcm(cry.samples))
+                .await;
         }
     }
 
@@ -75,5 +95,5 @@ fn random_cry_index() -> usize {
     state ^= state >> 17;
     state ^= state << 5;
     RANDOM_STATE.store(state, Relaxed);
-    state as usize % CRIES_PCM.len()
+    state as usize % CRIES.len()
 }
