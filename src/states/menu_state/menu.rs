@@ -84,10 +84,10 @@ impl MenuFolder {
 #[derive(Debug, Clone, Copy)]
 pub enum MenuProgram {
     LightShow,
+    Cries,
     Beeper,
     FlowField,
     Seizure,
-    Cry,
     Polyhedra,
     BadDecision,
     Wireframe,
@@ -102,10 +102,10 @@ impl MenuProgram {
     pub fn as_str(&self) -> &'static str {
         match self {
             MenuProgram::LightShow => "LightShow",
+            MenuProgram::Cries => "Cries",
             MenuProgram::Beeper => "Beeper",
             MenuProgram::FlowField => "FlowField",
             MenuProgram::Seizure => "Seizure",
-            MenuProgram::Cry => "Cry",
             MenuProgram::Polyhedra => "Polyhedra",
             MenuProgram::BadDecision => "BadDecision",
             MenuProgram::Wireframe => "Wireframe",
@@ -141,6 +141,9 @@ fn generate_menu_definition() -> MenuTree {
         .push(MenuGeneralItem::MenuProgram(MenuProgram::LightShow))
         .unwrap();
     layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Cries))
+        .unwrap();
+    layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Beeper))
         .unwrap();
     layer_0
@@ -148,9 +151,6 @@ fn generate_menu_definition() -> MenuTree {
         .unwrap();
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Seizure))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Cry))
         .unwrap();
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Polyhedra))

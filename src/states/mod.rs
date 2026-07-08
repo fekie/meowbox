@@ -9,6 +9,7 @@ use menu_state::menu::MenuResources;
 
 use crate::{leds::LightRingState, physics::PhysicsResources};
 
+pub mod cries;
 pub mod error_state;
 pub mod flow_field;
 pub mod light_ring_loop;
@@ -76,6 +77,7 @@ impl Meowbox {
             State::ErrorState(_) => self.tick_error_state().await,
             State::Menu(_, _) => self.tick_menu_state().await,
             State::LightShow(_) => self.tick_light_show().await,
+            State::Cries(_) => self.tick_cries().await,
             State::Unimplemented(_) => {
                 self.tick_unimplemented().await
             }
@@ -118,6 +120,9 @@ impl Meowbox {
             State::LightShow(_) => {
                 self.state = State::LightShow(Stage::Shutdown);
             }
+            State::Cries(_) => {
+                self.state = State::Cries(Stage::Shutdown);
+            }
             State::Unimplemented(_) => {
                 self.state = State::Unimplemented(Stage::Shutdown);
             }
@@ -148,6 +153,7 @@ pub enum State {
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
     LightShow(Stage),
+    Cries(Stage),
     Unimplemented(Stage),
     /// Does both the light ring and the flow field. This is a good
     /// way to see if the device is still "running" properly

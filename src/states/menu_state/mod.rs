@@ -135,6 +135,9 @@ impl Meowbox {
                 Some(MenuGeneralItem::MenuProgram(
                     MenuProgram::LightShow,
                 )) => Some(State::LightShow(Stage::Setup)),
+                Some(MenuGeneralItem::MenuProgram(
+                    MenuProgram::Cries,
+                )) => Some(State::Cries(Stage::Setup)),
                 Some(_) => Some(State::Unimplemented(Stage::Setup)),
                 None => None,
             };

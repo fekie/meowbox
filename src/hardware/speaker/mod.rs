@@ -47,6 +47,25 @@ pub static SPEAKER_CHANNEL: Channel<
 pub static MEOW_PCM: &[u8] =
     include_bytes!("../../../sounds/meow.pcm");
 
+pub static CRIES_PCM: &[&[u8]] = &[
+    include_bytes!("../../../sounds/cries/001.pcm"),
+    include_bytes!("../../../sounds/cries/002.pcm"),
+    include_bytes!("../../../sounds/cries/003.pcm"),
+    include_bytes!("../../../sounds/cries/004.pcm"),
+    include_bytes!("../../../sounds/cries/005.pcm"),
+    include_bytes!("../../../sounds/cries/006.pcm"),
+    include_bytes!("../../../sounds/cries/007.pcm"),
+    include_bytes!("../../../sounds/cries/008.pcm"),
+    include_bytes!("../../../sounds/cries/009.pcm"),
+    include_bytes!("../../../sounds/cries/010.pcm"),
+    include_bytes!("../../../sounds/cries/011.pcm"),
+    include_bytes!("../../../sounds/cries/012.pcm"),
+    include_bytes!("../../../sounds/cries/013.pcm"),
+    include_bytes!("../../../sounds/cries/014.pcm"),
+    include_bytes!("../../../sounds/cries/015.pcm"),
+    include_bytes!("../../../sounds/cries/016.pcm"),
+];
+
 #[derive(Clone)]
 pub enum SpeakerCommand {
     Sine440Hz(embassy_time::Duration),
