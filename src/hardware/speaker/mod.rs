@@ -44,9 +44,13 @@ pub static SPEAKER_CHANNEL: Channel<
     SPEAKER_BUFFER_CMD_SIZE,
 > = Channel::new();
 
+pub static MEOW_PCM: &[u8] =
+    include_bytes!("../../../sounds/meow.pcm");
+
 #[derive(Clone)]
 pub enum SpeakerCommand {
     Sine440Hz(embassy_time::Duration),
+    PlayPcm(&'static [u8]),
 }
 
 pub(super) type SpeakerType = I2s<'static, Async>;
@@ -147,6 +151,16 @@ pub async fn speaker_task(speaker: SpeakerType) {
                 buffer.fill(0);
                 for _ in 0..2 {
                     push_all(&mut transfer, &buffer).await;
+                }
+            }
+            SpeakerCommand::PlayPcm(samples) => {
+                for buffer in samples.chunks(2048) {
+                    push_all(&mut transfer, buffer).await;
+                }
+
+                let silence = [0u8; 2048];
+                for _ in 0..2 {
+                    push_all(&mut transfer, &silence).await;
                 }
             }
         }

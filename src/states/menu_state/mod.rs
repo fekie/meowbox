@@ -21,7 +21,7 @@ use crate::{
             MONO_DISPLAY_CH, MONO_DISPLAY_LINE_WIDTH,
             MonoDisplayCommand,
         },
-        speaker::{SPEAKER_CHANNEL, SpeakerCommand},
+        speaker::{MEOW_PCM, SPEAKER_CHANNEL, SpeakerCommand},
         thumbwheel::ThumbwheelHandle,
     },
     input_listener::{Input, InputListener, KillSignal},
@@ -448,7 +448,9 @@ async fn handle_inputs() -> Result<(), KillSignal> {
         InputListener::take_input(Input::ButtonRight, true)?;
 
     if button_right.is_some() {
-        BACKLIGHT_CH.send(BacklightCommand::Toggle).await;
+        SPEAKER_CHANNEL
+            .send(SpeakerCommand::PlayPcm(MEOW_PCM))
+            .await;
 
         println!("hit right button");
     }
