@@ -52,8 +52,13 @@ impl Meowbox {
     }
 
     async fn setup_menu_state(&mut self) {
+        RIGHT_ROTARY_DISPLAY_INITIALIZED.store(false, SeqCst);
+
         BACKLIGHT_CH.send(BacklightCommand::SetLow).await;
         LARGE_DISPLAY_CH.send(LargeDisplayCommand::DisplayOn).await;
+        LARGE_DISPLAY_CH
+            .send(LargeDisplayCommand::Clear(LARGE_DISPLAY_BLACK))
+            .await;
 
         LED_SHIFTER_CHANNEL
             .send(LedCommand::SetHigh(LED::ButtonRight))
