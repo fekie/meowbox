@@ -1,8 +1,10 @@
 use std::{
     fs::{self, File},
-    io::{BufWriter, Write},
+    io::{BufReader, BufWriter, Write},
     path::PathBuf,
 };
+
+use image::{AnimationDecoder, codecs::gif::GifDecoder};
 
 const FIRST_CRY_ID: u16 = 387;
 // The linker provides a 4 MiB flash window shared by code and static
@@ -13,10 +15,103 @@ const MAX_EMBEDDED_CRY_BYTES: u64 = 3_500 * 1_024;
 fn main() {
     linker_be_nice();
     generate_cries();
+    generate_victini_animation();
     println!("cargo:rustc-link-arg=-Tdefmt.x");
     // make sure linkall.x is the last linker script (otherwise might
     // cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
+}
+
+fn generate_victini_animation() {
+    const ASSET_PATH: &str = "assets/victini.gif";
+
+    println!("cargo:rerun-if-changed={ASSET_PATH}");
+
+    let decoder = GifDecoder::new(BufReader::new(
+        File::open(ASSET_PATH).expect("failed to open Victini GIF"),
+    ))
+    .expect("failed to decode Victini GIF");
+    let frames = decoder
+        .into_frames()
+        .collect_frames()
+        .expect("failed to decode Victini GIF frames");
+    assert!(!frames.is_empty(), "Victini GIF has no frames");
+
+    let width = frames[0].buffer().width();
+    let height = frames[0].buffer().height();
+    let output_dir =
+        PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
+    let mut deltas = BufWriter::new(
+        File::create(output_dir.join("victini.delta565"))
+            .expect("failed to create Victini delta data"),
+    );
+    let mut delays_ms = Vec::with_capacity(frames.len());
+    let mut offsets = Vec::with_capacity(frames.len() + 1);
+    let mut previous = vec![0; (width * height) as usize];
+    let mut bytes_written = 0_u32;
+
+    for frame in frames {
+        assert_eq!(frame.buffer().width(), width);
+        assert_eq!(frame.buffer().height(), height);
+
+        let (numerator, denominator) = frame.delay().numer_denom_ms();
+        let delay_ms = ((numerator as u64 + denominator as u64 - 1)
+            / denominator as u64)
+            .max(10);
+        delays_ms.push(delay_ms);
+
+        let first_frame = offsets.is_empty();
+        offsets.push(bytes_written);
+        for (index, pixel) in frame.into_buffer().pixels().enumerate()
+        {
+            let [red, green, blue, alpha] = pixel.0;
+            let color = if alpha < 128 {
+                0
+            } else {
+                ((red as u16 >> 3) << 11)
+                    | ((green as u16 >> 2) << 5)
+                    | (blue as u16 >> 3)
+            };
+            if !first_frame && color == previous[index] {
+                continue;
+            }
+
+            previous[index] = color;
+            deltas
+                .write_all(&(index as u16).to_le_bytes())
+                .expect("failed to write Victini delta index");
+            deltas
+                .write_all(&color.to_le_bytes())
+                .expect("failed to write Victini delta color");
+            bytes_written += 4;
+        }
+    }
+    offsets.push(bytes_written);
+    deltas.flush().expect("failed to flush Victini delta data");
+
+    let mut metadata = BufWriter::new(
+        File::create(output_dir.join("victini.rs"))
+            .expect("failed to create Victini metadata"),
+    );
+    writeln!(metadata, "pub const VICTINI_WIDTH: u32 = {width};")
+        .unwrap();
+    writeln!(metadata, "pub const VICTINI_HEIGHT: u32 = {height};")
+        .unwrap();
+    writeln!(
+        metadata,
+        "pub const VICTINI_DELAYS_MS: &[u64] = &{delays_ms:?};"
+    )
+    .unwrap();
+    writeln!(
+        metadata,
+        "pub const VICTINI_OFFSETS: &[u32] = &{offsets:?};"
+    )
+    .unwrap();
+    writeln!(
+        metadata,
+        "pub static VICTINI_DELTAS: &[u8] = include_bytes!(concat!(env!(\"OUT_DIR\"), \"/victini.delta565\"));"
+    )
+    .unwrap();
 }
 
 // currently generates around ~40 random cries for the pool

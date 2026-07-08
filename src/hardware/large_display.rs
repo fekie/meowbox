@@ -20,9 +20,11 @@
 //     tft.println("Hello from ESP32-S3", 100, 40);
 // }
 
+use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
+use embassy_time::{Duration, Timer};
 use embedded_graphics::{
     mono_font::{MonoTextStyle, ascii::FONT_10X20},
     pixelcolor::Rgb565,
@@ -32,6 +34,8 @@ use embedded_graphics::{
 use ili9341::ModeState;
 
 use crate::hardware::LargeDisplayType;
+
+include!(concat!(env!("OUT_DIR"), "/victini.rs"));
 
 pub static BACKLIGHT_CH: Channel<
     CriticalSectionRawMutex,
@@ -73,6 +77,8 @@ pub enum LargeDisplayCommand {
         color: u16,
         scale: u32,
     },
+    PlayVictini,
+    StopAnimation,
 }
 
 #[embassy_executor::task]
@@ -106,8 +112,57 @@ pub async fn backlight_listener(mut bl_pin: gpio::Output<'static>) {
 pub async fn large_display_listener(
     mut display: Option<LargeDisplayType>,
 ) {
+    let mut victini_frame = None;
+
     loop {
-        let cmd = LARGE_DISPLAY_CH.receive().await;
+        let cmd = if let Some(frame_index) = victini_frame {
+            let delay =
+                Duration::from_millis(VICTINI_DELAYS_MS[frame_index]);
+            match select(
+                LARGE_DISPLAY_CH.receive(),
+                Timer::after(delay),
+            )
+            .await
+            {
+                Either::First(cmd) => cmd,
+                Either::Second(()) => {
+                    let next_frame =
+                        (frame_index + 1) % VICTINI_DELAYS_MS.len();
+                    victini_frame = Some(next_frame);
+                    if let Some(display) = display.as_mut()
+                        && draw_victini_frame(display, next_frame)
+                            .is_err()
+                    {
+                        defmt::error!("failed to draw Victini frame");
+                    }
+                    continue;
+                }
+            }
+        } else {
+            LARGE_DISPLAY_CH.receive().await
+        };
+
+        match cmd {
+            LargeDisplayCommand::PlayVictini => {
+                victini_frame = Some(0);
+                if let Some(display) = display.as_mut() {
+                    let result = display
+                        .clear_screen(0)
+                        .and_then(|_| draw_victini_frame(display, 0));
+                    if result.is_err() {
+                        defmt::error!(
+                            "failed to start Victini animation"
+                        );
+                    }
+                }
+                continue;
+            }
+            LargeDisplayCommand::StopAnimation => {
+                victini_frame = None;
+                continue;
+            }
+            _ => {}
+        }
 
         let Some(display) = display.as_mut() else {
             continue;
@@ -173,12 +228,64 @@ pub async fn large_display_listener(
                 .draw(&mut rotated)
                 .map(|_| ())
             }
+            LargeDisplayCommand::PlayVictini
+            | LargeDisplayCommand::StopAnimation => unreachable!(),
         };
 
         if result.is_err() {
             defmt::error!("large display command failed");
         }
     }
+}
+
+fn draw_victini_frame(
+    display: &mut LargeDisplayType,
+    frame_index: usize,
+) -> Result<(), ili9341::DisplayError> {
+    let start = VICTINI_OFFSETS[frame_index] as usize;
+    let end = VICTINI_OFFSETS[frame_index + 1] as usize;
+    let frame = &VICTINI_DELTAS[start..end];
+    let scale =
+        (240 / VICTINI_HEIGHT).min(320 / VICTINI_WIDTH).max(1);
+    let origin = Point::new(
+        ((240 - VICTINI_HEIGHT * scale) / 2) as i32,
+        ((320 - VICTINI_WIDTH * scale) / 2) as i32,
+    );
+    let mut records = frame.chunks_exact(4).peekable();
+    while let Some(bytes) = records.next() {
+        let index = u16::from_le_bytes([bytes[0], bytes[1]]) as u32;
+        let color = u16::from_le_bytes([bytes[2], bytes[3]]);
+        let source_x = index % VICTINI_WIDTH;
+        let source_y = index / VICTINI_WIDTH;
+        let mut run = 1;
+
+        while let Some(next) = records.peek() {
+            let next_index =
+                u16::from_le_bytes([next[0], next[1]]) as u32;
+            let next_color = u16::from_le_bytes([next[2], next[3]]);
+            if next_index != index + run
+                || next_index / VICTINI_WIDTH != source_y
+                || next_color != color
+            {
+                break;
+            }
+            records.next();
+            run += 1;
+        }
+
+        fill_rect(
+            display,
+            (origin.x as u32 + source_y * scale) as u16,
+            (origin.y as u32
+                + (VICTINI_WIDTH - source_x - run) * scale)
+                as u16,
+            scale as u16,
+            (run * scale) as u16,
+            color,
+        )?;
+    }
+
+    Ok(())
 }
 
 struct RotatedScaledTarget<'a> {

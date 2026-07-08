@@ -6,6 +6,10 @@ use heapless::String;
 use super::{MenuState, Meowbox, Stage, State};
 use crate::{
     hardware::{
+        large_display::{
+            BACKLIGHT_CH, BacklightCommand, LARGE_DISPLAY_CH,
+            LargeDisplayCommand,
+        },
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
         mono_display::{MONO_DISPLAY_CH, MonoDisplayCommand},
         speaker::{CRIES, SPEAKER_CHANNEL, SpeakerCommand},
@@ -45,6 +49,12 @@ impl Meowbox {
             .await;
         MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
 
+        LARGE_DISPLAY_CH.send(LargeDisplayCommand::DisplayOn).await;
+        BACKLIGHT_CH.send(BacklightCommand::SetHigh).await;
+        LARGE_DISPLAY_CH
+            .send(LargeDisplayCommand::PlayVictini)
+            .await;
+
         self.state = State::Cries(Stage::Execution);
     }
 
@@ -80,6 +90,9 @@ impl Meowbox {
     }
 
     async fn shutdown_cries(&mut self) {
+        LARGE_DISPLAY_CH
+            .send(LargeDisplayCommand::StopAnimation)
+            .await;
         LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
         self.state = self.next_state.take().unwrap_or(State::Menu(
             Stage::Setup,
