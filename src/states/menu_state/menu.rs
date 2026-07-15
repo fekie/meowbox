@@ -93,6 +93,7 @@ pub enum MenuProgram {
     Wireframe,
     Sounds,
     Conway,
+    Automata,
 
     // Exists under folder Test
     BuzzerTest,
@@ -111,6 +112,7 @@ impl MenuProgram {
             MenuProgram::Wireframe => "Wireframe",
             MenuProgram::Sounds => "Sounds",
             MenuProgram::Conway => "Conway",
+            MenuProgram::Automata => "Automata",
             MenuProgram::BuzzerTest => "BuzzerTest",
         }
     }
@@ -166,6 +168,9 @@ fn generate_menu_definition() -> MenuTree {
         .unwrap();
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Conway))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Automata))
         .unwrap();
 
     layer_0

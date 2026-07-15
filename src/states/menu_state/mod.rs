@@ -25,7 +25,7 @@ use crate::{
         thumbwheel::ThumbwheelHandle,
     },
     input_listener::{Input, InputListener, KillSignal},
-    states::{ErrorStateType, MenuState, Stage},
+    states::{AutomataState, ErrorStateType, MenuState, Stage},
     tasks::all_leds_off,
 };
 
@@ -138,6 +138,12 @@ impl Meowbox {
                 Some(MenuGeneralItem::MenuProgram(
                     MenuProgram::Cries,
                 )) => Some(State::Cries(Stage::Setup)),
+                Some(MenuGeneralItem::MenuProgram(
+                    MenuProgram::Automata,
+                )) => Some(State::Automata(
+                    Stage::Setup,
+                    AutomataState::default(),
+                )),
                 Some(_) => Some(State::Unimplemented(Stage::Setup)),
                 None => None,
             };
