@@ -13,6 +13,7 @@ pub mod automata;
 pub mod cries;
 pub mod error_state;
 pub mod flow_field;
+pub mod langton;
 pub mod light_ring_loop;
 pub mod light_show;
 pub mod menu_state;
@@ -80,6 +81,7 @@ impl Meowbox {
             State::LightShow(_) => self.tick_light_show().await,
             State::Cries(_, _) => self.tick_cries().await,
             State::Automata(_, _) => self.tick_automata().await,
+            State::Langton(_, _) => self.tick_langton().await,
             State::Unimplemented(_) => {
                 self.tick_unimplemented().await
             }
@@ -129,6 +131,10 @@ impl Meowbox {
                 self.state =
                     State::Automata(Stage::Shutdown, automata_state);
             }
+            State::Langton(_, langton_state) => {
+                self.state =
+                    State::Langton(Stage::Shutdown, langton_state);
+            }
             State::Unimplemented(_) => {
                 self.state = State::Unimplemented(Stage::Shutdown);
             }
@@ -161,6 +167,7 @@ pub enum State {
     LightShow(Stage),
     Cries(Stage, usize),
     Automata(Stage, AutomataState),
+    Langton(Stage, LangtonState),
     Unimplemented(Stage),
     /// Does both the light ring and the flow field. This is a good
     /// way to see if the device is still "running" properly
@@ -205,8 +212,9 @@ pub enum FlowFieldState {
 pub struct AutomataState {
     pub rule: u8,
     pub palette_index: i32,
-    pub camera_x: usize,
-    pub camera_y: usize,
+    pub kernel_index: usize,
+    pub kernel_running: bool,
+    pub kernel_pass: usize,
 }
 
 impl Default for AutomataState {
@@ -214,8 +222,42 @@ impl Default for AutomataState {
         Self {
             rule: 1,
             palette_index: 0,
-            camera_x: 60,
-            camera_y: 0,
+            kernel_index: 0,
+            kernel_running: false,
+            kernel_pass: 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum LangtonDirection {
+    Up,
+    Right,
+    Down,
+    Left,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LangtonState {
+    pub x: usize,
+    pub y: usize,
+    pub direction: LangtonDirection,
+    pub rule_index: usize,
+    pub palette_index: i32,
+    pub cells: [u64; 75],
+    pub cells_high: [u64; 75],
+}
+
+impl Default for LangtonState {
+    fn default() -> Self {
+        Self {
+            x: 30,
+            y: 40,
+            direction: LangtonDirection::Up,
+            rule_index: 0,
+            palette_index: 0,
+            cells: [0; 75],
+            cells_high: [0; 75],
         }
     }
 }
