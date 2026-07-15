@@ -9,6 +9,7 @@ use esp_hal::{
     time::Rate,
 };
 use esp_hal_smartled::{SmartLedsAdapter, buffer_size};
+use smart_leds::{RGB8, SmartLedsWrite};
 use static_cell::StaticCell;
 
 const RMT_BUFFER_SIZE: usize = 1;
@@ -53,5 +54,13 @@ pub fn init<'a>(
 
     // channels 0 and 1 are for sending, channels 2 and 3 are for
     // sending
-    SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer)
+    let mut neopixel =
+        SmartLedsAdapter::new(rmt.channel0, neopixel_pin, rmt_buffer);
+
+    // A NeoPixel retains its last latched color across MCU resets.
+    // Driving the data pin low is not enough to clear it, so
+    // explicitly latch black as part of hardware initialization.
+    neopixel.write([RGB8::default()]).unwrap();
+
+    neopixel
 }

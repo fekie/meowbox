@@ -20,9 +20,14 @@
 //     tft.println("Hello from ESP32-S3", 100, 40);
 // }
 
+use embassy_futures::{
+    select::{Either, select},
+    yield_now,
+};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel,
 };
+use embassy_time::{Duration, Timer};
 use embedded_graphics::{
     mono_font::{MonoTextStyle, ascii::FONT_10X20},
     pixelcolor::Rgb565,
@@ -32,6 +37,18 @@ use embedded_graphics::{
 use ili9341::ModeState;
 
 use crate::hardware::LargeDisplayType;
+
+struct PokemonSprite {
+    pokemon_id: u16,
+    width: u32,
+    height: u32,
+    delays_ms: &'static [u64],
+    offsets: &'static [u32],
+    deltas: &'static [u8],
+}
+
+static POKEMON_SPRITES: &[PokemonSprite] =
+    include!(concat!(env!("OUT_DIR"), "/pokemon_sprites.rs"));
 
 pub static BACKLIGHT_CH: Channel<
     CriticalSectionRawMutex,
@@ -73,6 +90,8 @@ pub enum LargeDisplayCommand {
         color: u16,
         scale: u32,
     },
+    PlayPokemon(u16),
+    StopAnimation,
 }
 
 #[embassy_executor::task]
@@ -106,8 +125,82 @@ pub async fn backlight_listener(mut bl_pin: gpio::Output<'static>) {
 pub async fn large_display_listener(
     mut display: Option<LargeDisplayType>,
 ) {
+    let mut pokemon_frame: Option<(usize, usize)> = None;
+
     loop {
-        let cmd = LARGE_DISPLAY_CH.receive().await;
+        let cmd = if let Some((sprite_index, frame_index)) =
+            pokemon_frame
+        {
+            let sprite = &POKEMON_SPRITES[sprite_index];
+            let delay =
+                Duration::from_millis(sprite.delays_ms[frame_index]);
+            match select(
+                LARGE_DISPLAY_CH.receive(),
+                Timer::after(delay),
+            )
+            .await
+            {
+                Either::First(cmd) => cmd,
+                Either::Second(()) => {
+                    let next_frame =
+                        (frame_index + 1) % sprite.delays_ms.len();
+                    pokemon_frame = Some((sprite_index, next_frame));
+                    if let Some(display) = display.as_mut() {
+                        if draw_pokemon_frame(
+                            display, sprite, next_frame,
+                        )
+                        .await
+                        .is_err()
+                        {
+                            defmt::error!(
+                                "failed to draw Pokemon frame"
+                            );
+                        }
+                    }
+                    continue;
+                }
+            }
+        } else {
+            LARGE_DISPLAY_CH.receive().await
+        };
+
+        match cmd {
+            LargeDisplayCommand::PlayPokemon(pokemon_id) => {
+                let Some(sprite_index) =
+                    POKEMON_SPRITES.iter().position(|sprite| {
+                        sprite.pokemon_id == pokemon_id
+                    })
+                else {
+                    defmt::error!(
+                        "no sprite for Pokemon {}",
+                        pokemon_id
+                    );
+                    continue;
+                };
+                let sprite = &POKEMON_SPRITES[sprite_index];
+                pokemon_frame = Some((sprite_index, 0));
+                if let Some(display) = display.as_mut() {
+                    let result = match draw_bars(display).await {
+                        Ok(()) => {
+                            draw_pokemon_frame(display, sprite, 0)
+                                .await
+                        }
+                        Err(error) => Err(error),
+                    };
+                    if result.is_err() {
+                        defmt::error!(
+                            "failed to start Pokemon animation"
+                        );
+                    }
+                }
+                continue;
+            }
+            LargeDisplayCommand::StopAnimation => {
+                pokemon_frame = None;
+                continue;
+            }
+            _ => {}
+        }
 
         let Some(display) = display.as_mut() else {
             continue;
@@ -173,12 +266,111 @@ pub async fn large_display_listener(
                 .draw(&mut rotated)
                 .map(|_| ())
             }
+            LargeDisplayCommand::PlayPokemon(_)
+            | LargeDisplayCommand::StopAnimation => unreachable!(),
         };
 
         if result.is_err() {
             defmt::error!("large display command failed");
         }
     }
+}
+
+async fn draw_pokemon_frame(
+    display: &mut LargeDisplayType,
+    sprite: &PokemonSprite,
+    frame_index: usize,
+) -> Result<(), ili9341::DisplayError> {
+    let start = sprite.offsets[frame_index] as usize;
+    let end = sprite.offsets[frame_index + 1] as usize;
+    let frame = &sprite.deltas[start..end];
+    let scale = (240 / sprite.height).min(320 / sprite.width).max(1);
+    let origin = Point::new(
+        ((240 - sprite.height * scale) / 2) as i32,
+        ((320 - sprite.width * scale) / 2) as i32,
+    );
+    let mut records = frame.chunks_exact(4).peekable();
+    while let Some(bytes) = records.next() {
+        let encoded_index = u16::from_le_bytes([bytes[0], bytes[1]]);
+        let transparent = encoded_index & 0x8000 != 0;
+        let index = (encoded_index & 0x7fff) as u32;
+        let color = u16::from_le_bytes([bytes[2], bytes[3]]);
+        let source_x = index % sprite.width;
+        let source_y = index / sprite.width;
+        let mut run = 1;
+
+        while let Some(next) = records.peek() {
+            let next_encoded = u16::from_le_bytes([next[0], next[1]]);
+            let next_transparent = next_encoded & 0x8000 != 0;
+            let next_index = (next_encoded & 0x7fff) as u32;
+            let next_color = u16::from_le_bytes([next[2], next[3]]);
+            if next_index != index + run
+                || next_index / sprite.width != source_y
+                || next_transparent != transparent
+                || (!transparent && next_color != color)
+            {
+                break;
+            }
+            records.next();
+            run += 1;
+        }
+
+        let x = (origin.x as u32 + source_y * scale) as u16;
+        let y = (origin.y as u32
+            + (sprite.width - source_x - run) * scale)
+            as u16;
+        let width = scale as u16;
+        let height = (run * scale) as u16;
+        if transparent {
+            fill_bars_rect(display, x, y, width, height)?;
+        } else {
+            fill_rect(display, x, y, width, height, color)?;
+        }
+        yield_now().await;
+    }
+
+    Ok(())
+}
+
+const BAR_WIDTH: u16 = 16;
+const BAR_GRAY: u16 = 0x8410;
+
+async fn draw_bars(
+    display: &mut LargeDisplayType,
+) -> Result<(), ili9341::DisplayError> {
+    for x in (0..240).step_by(BAR_WIDTH as usize) {
+        let color = if (x / BAR_WIDTH) % 2 == 0 {
+            BAR_GRAY
+        } else {
+            0
+        };
+        fill_rect(display, x, 0, BAR_WIDTH.min(240 - x), 320, color)?;
+        yield_now().await;
+    }
+    Ok(())
+}
+
+fn fill_bars_rect(
+    display: &mut LargeDisplayType,
+    x: u16,
+    y: u16,
+    width: u16,
+    height: u16,
+) -> Result<(), ili9341::DisplayError> {
+    let x_end = x + width;
+    let mut bar_x = x;
+    while bar_x < x_end {
+        let segment_width =
+            (BAR_WIDTH - bar_x % BAR_WIDTH).min(x_end - bar_x);
+        let color = if (bar_x / BAR_WIDTH) % 2 == 0 {
+            BAR_GRAY
+        } else {
+            0
+        };
+        fill_rect(display, bar_x, y, segment_width, height, color)?;
+        bar_x += segment_width;
+    }
+    Ok(())
 }
 
 struct RotatedScaledTarget<'a> {

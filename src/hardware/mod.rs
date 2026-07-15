@@ -136,8 +136,7 @@ pub struct NonMutexPeripherals {
     pub right_rotary_a: Input<'static>,
     pub right_rotary_b: Input<'static>,
     pub flash: FLASH<'static>,
-    // it has a buffer size of one because there is only one neopixel
-    //pub neopixel: SmartLedsAdapter<'static, 25>,
+    pub neopixel: SmartLedsAdapter<'static, 25>,
     pub speaker: I2s<'static, esp_hal::Async>,
     pub shifter: LedShifterType,
     pub large_display: Option<LargeDisplayType>,
@@ -150,7 +149,6 @@ pub struct NonMutexPeripherals {
     pub dpad_left: Input<'static>,
     pub dpad_right: Input<'static>,
     pub bl_pin: Output<'static>,
-    pub neopixel_pin_tied_down: Output<'static>,
 }
 
 /// Initializes peripherals and assigns them to their respective
@@ -238,12 +236,6 @@ pub async fn init_peripherals(
         Input::new(peripherals.GPIO10, pull_up_config);
     let right_rotary_b =
         Input::new(peripherals.GPIO12, pull_up_config);
-    let neopixel_pin_tied_down = Output::new(
-        peripherals.GPIO19,
-        Level::Low,
-        output_config_default,
-    );
-
     {
         //*(RIGHT_BUTTON.lock().await) = Some(right_button);
         //*(LEFT_BUTTON.lock().await) = Some(left_button);
@@ -285,12 +277,12 @@ pub async fn init_peripherals(
 
     let flash = peripherals.FLASH;
 
-    // let neopixel = neopixel::init(
-    //     peripherals.LEDC,
-    //     peripherals.RMT,
-    //     peripherals.GPIO19,
-    //     output_config_default,
-    // );
+    let neopixel = neopixel::init(
+        peripherals.LEDC,
+        peripherals.RMT,
+        peripherals.GPIO19,
+        output_config_default,
+    );
 
     let mono_display = mono_display::init(
         peripherals.I2C0,
@@ -424,7 +416,7 @@ pub async fn init_peripherals(
         right_rotary_a,
         right_rotary_b,
         flash, //simple_speaker,
-        //neopixel,
+        neopixel,
         speaker,
         shifter, /* i2s_speaker, */
         large_display,
@@ -437,6 +429,5 @@ pub async fn init_peripherals(
         dpad_left,
         dpad_right,
         bl_pin,
-        neopixel_pin_tied_down,
     }
 }

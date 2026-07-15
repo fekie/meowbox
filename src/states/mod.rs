@@ -78,7 +78,7 @@ impl Meowbox {
             State::ErrorState(_) => self.tick_error_state().await,
             State::Menu(_, _) => self.tick_menu_state().await,
             State::LightShow(_) => self.tick_light_show().await,
-            State::Cries(_) => self.tick_cries().await,
+            State::Cries(_, _) => self.tick_cries().await,
             State::Automata(_, _) => self.tick_automata().await,
             State::Unimplemented(_) => {
                 self.tick_unimplemented().await
@@ -122,8 +122,8 @@ impl Meowbox {
             State::LightShow(_) => {
                 self.state = State::LightShow(Stage::Shutdown);
             }
-            State::Cries(_) => {
-                self.state = State::Cries(Stage::Shutdown);
+            State::Cries(_, cry_index) => {
+                self.state = State::Cries(Stage::Shutdown, cry_index);
             }
             State::Automata(_, automata_state) => {
                 self.state =
@@ -159,7 +159,7 @@ pub enum State {
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
     LightShow(Stage),
-    Cries(Stage),
+    Cries(Stage, usize),
     Automata(Stage, AutomataState),
     Unimplemented(Stage),
     /// Does both the light ring and the flow field. This is a good
@@ -204,11 +204,19 @@ pub enum FlowFieldState {
 #[derive(Clone, Copy, Debug)]
 pub struct AutomataState {
     pub rule: u8,
+    pub palette_index: i32,
+    pub camera_x: usize,
+    pub camera_y: usize,
 }
 
 impl Default for AutomataState {
     fn default() -> Self {
-        Self { rule: 1 }
+        Self {
+            rule: 1,
+            palette_index: 0,
+            camera_x: 60,
+            camera_y: 0,
+        }
     }
 }
 

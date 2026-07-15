@@ -1,32 +1,38 @@
-use core::sync::atomic::{AtomicU32, Ordering::Relaxed};
+use core::fmt::Write;
 
-use embassy_time::Instant;
+use heapless::String;
+use rotary_encoder_embedded::Direction;
 
 use super::{MenuState, Meowbox, Stage, State};
 use crate::{
     hardware::{
+        large_display::{
+            BACKLIGHT_CH, BacklightCommand, LARGE_DISPLAY_CH,
+            LargeDisplayCommand,
+        },
         led_shifter::{LED, LED_SHIFTER_CHANNEL, LedCommand},
-        speaker::{CRIES_PCM, SPEAKER_CHANNEL, SpeakerCommand},
+        mono_display::{MONO_DISPLAY_CH, MonoDisplayCommand},
+        speaker::{CRIES, SPEAKER_CHANNEL, SpeakerCommand},
     },
     input_listener::{Input, InputListener},
 };
 
-static RANDOM_STATE: AtomicU32 = AtomicU32::new(0x9e37_79b9);
+const CRIES_VOLUME_MULTIPLIER: f32 = 0.5;
 
 impl Meowbox {
     pub(super) async fn tick_cries(&mut self) {
-        let State::Cries(stage) = self.state else {
+        let State::Cries(stage, cry_index) = self.state else {
             return;
         };
 
         match stage {
-            Stage::Setup => self.setup_cries().await,
-            Stage::Execution => self.execute_cries().await,
+            Stage::Setup => self.setup_cries(cry_index).await,
+            Stage::Execution => self.execute_cries(cry_index).await,
             Stage::Shutdown => self.shutdown_cries().await,
         }
     }
 
-    async fn setup_cries(&mut self) {
+    async fn setup_cries(&mut self, cry_index: usize) {
         LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
         LED_SHIFTER_CHANNEL
             .send(LedCommand::SetHigh(LED::ButtonLeft))
@@ -34,10 +40,45 @@ impl Meowbox {
         LED_SHIFTER_CHANNEL
             .send(LedCommand::SetHigh(LED::ButtonRight))
             .await;
-        self.state = State::Cries(Stage::Execution);
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::SetHigh(LED::DpadLeft))
+            .await;
+        LED_SHIFTER_CHANNEL
+            .send(LedCommand::SetHigh(LED::DpadRight))
+            .await;
+
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::SwitchToTerminal)
+            .await;
+        MONO_DISPLAY_CH
+            .send(MonoDisplayCommand::SetDisplayOn(true))
+            .await;
+        let _ = InputListener::take_input(Input::DpadLeft, true);
+        let _ = InputListener::take_input(Input::DpadRight, true);
+        let _ = InputListener::take_input(
+            Input::RotaryEncoderRotateLeft(Direction::Clockwise),
+            true,
+        );
+        let _ = InputListener::take_input(
+            Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
+            true,
+        );
+        let _ = InputListener::take_input(
+            Input::RotaryEncoderRotateRight(Direction::Clockwise),
+            true,
+        );
+        let _ = InputListener::take_input(
+            Input::RotaryEncoderRotateRight(Direction::Anticlockwise),
+            true,
+        );
+        LARGE_DISPLAY_CH.send(LargeDisplayCommand::DisplayOn).await;
+        BACKLIGHT_CH.send(BacklightCommand::SetHigh).await;
+        show_cry(cry_index).await;
+
+        self.state = State::Cries(Stage::Execution, cry_index);
     }
 
-    async fn execute_cries(&mut self) {
+    async fn execute_cries(&mut self, cry_index: usize) {
         if InputListener::take_input(Input::ButtonLeft, true)
             .ok()
             .flatten()
@@ -54,12 +95,38 @@ impl Meowbox {
             .flatten()
             .is_some()
         {
-            let cry = CRIES_PCM[random_cry_index()];
-            SPEAKER_CHANNEL.send(SpeakerCommand::PlayPcm(cry)).await;
+            let cry = &CRIES[cry_index];
+            SPEAKER_CHANNEL
+                .send(SpeakerCommand::PlayPcmWithVolume {
+                    samples: cry.samples,
+                    volume_multiplier: CRIES_VOLUME_MULTIPLIER,
+                })
+                .await;
+        }
+
+        let (previous, next) = match take_one_rotary_turn() {
+            Some(Direction::Anticlockwise) => (1, 0),
+            Some(Direction::Clockwise) => (0, 1),
+            Some(Direction::None) => unreachable!(),
+            None => (
+                take_total(Input::DpadLeft),
+                take_total(Input::DpadRight),
+            ),
+        };
+        if previous != 0 || next != 0 {
+            let count = CRIES.len();
+            let next_index = (cry_index + next % count + count
+                - previous % count)
+                % count;
+            self.state = State::Cries(Stage::Execution, next_index);
+            show_cry(next_index).await;
         }
     }
 
     async fn shutdown_cries(&mut self) {
+        LARGE_DISPLAY_CH
+            .send(LargeDisplayCommand::StopAnimation)
+            .await;
         LED_SHIFTER_CHANNEL.send(LedCommand::SetAllLow).await;
         self.state = self.next_state.take().unwrap_or(State::Menu(
             Stage::Setup,
@@ -68,12 +135,55 @@ impl Meowbox {
     }
 }
 
-fn random_cry_index() -> usize {
-    let time = Instant::now().as_ticks() as u32;
-    let mut state = RANDOM_STATE.load(Relaxed) ^ time;
-    state ^= state << 13;
-    state ^= state >> 17;
-    state ^= state << 5;
-    RANDOM_STATE.store(state, Relaxed);
-    state as usize % CRIES_PCM.len()
+fn take_total(input: Input) -> usize {
+    InputListener::take_input(input, true)
+        .ok()
+        .flatten()
+        .unwrap_or(0) as usize
+}
+
+fn take_one_rotary_turn() -> Option<Direction> {
+    const ROTARY_INPUTS: [(Input, Direction); 4] = [
+        (
+            Input::RotaryEncoderRotateLeft(Direction::Anticlockwise),
+            Direction::Anticlockwise,
+        ),
+        (
+            Input::RotaryEncoderRotateRight(Direction::Anticlockwise),
+            Direction::Anticlockwise,
+        ),
+        (
+            Input::RotaryEncoderRotateLeft(Direction::Clockwise),
+            Direction::Clockwise,
+        ),
+        (
+            Input::RotaryEncoderRotateRight(Direction::Clockwise),
+            Direction::Clockwise,
+        ),
+    ];
+
+    ROTARY_INPUTS.iter().find_map(|(input, direction)| {
+        InputListener::take_input(*input, false)
+            .ok()
+            .flatten()
+            .map(|_| *direction)
+    })
+}
+
+async fn show_cry(cry_index: usize) {
+    let cry = &CRIES[cry_index];
+    let name = String::try_from(cry.name).unwrap();
+    let mut natdex = String::new();
+    write!(natdex, " \nNatDex#: {}", cry.pokemon_id).unwrap();
+
+    MONO_DISPLAY_CH.send(MonoDisplayCommand::Clear).await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(name))
+        .await;
+    MONO_DISPLAY_CH
+        .send(MonoDisplayCommand::WriteStr(natdex))
+        .await;
+    LARGE_DISPLAY_CH
+        .send(LargeDisplayCommand::PlayPokemon(cry.pokemon_id))
+        .await;
 }
