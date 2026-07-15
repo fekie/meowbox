@@ -27,6 +27,7 @@ use crate::{
     input_listener::{Input, InputListener, KillSignal},
     states::{
         AutomataState, ErrorStateType, LangtonState, MenuState, Stage,
+        SynthState,
     },
     tasks::all_leds_off,
 };
@@ -151,6 +152,12 @@ impl Meowbox {
                 )) => Some(State::Langton(
                     Stage::Setup,
                     LangtonState::default(),
+                )),
+                Some(MenuGeneralItem::MenuProgram(
+                    MenuProgram::Synth,
+                )) => Some(State::Synth(
+                    Stage::Setup,
+                    SynthState::default(),
                 )),
                 Some(_) => Some(State::Unimplemented(Stage::Setup)),
                 None => None,

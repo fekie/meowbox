@@ -53,6 +53,9 @@ impl InputListener {
             Input::ButtonRight => {
                 increment_counter(&super::BUTTON_RIGHT);
             }
+            Input::ButtonRightReleased => {
+                increment_counter(&super::BUTTON_RIGHT_RELEASED);
+            }
 
             Input::DpadBottom => {
                 increment_counter(&super::DPAD_BOTTOM);

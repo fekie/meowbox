@@ -95,6 +95,7 @@ pub enum MenuProgram {
     Conway,
     Automata,
     Langton,
+    Synth,
 
     // Exists under folder Test
     BuzzerTest,
@@ -115,6 +116,7 @@ impl MenuProgram {
             MenuProgram::Conway => "Conway",
             MenuProgram::Automata => "Automata",
             MenuProgram::Langton => "Langton",
+            MenuProgram::Synth => "Synth",
             MenuProgram::BuzzerTest => "BuzzerTest",
         }
     }
@@ -152,6 +154,9 @@ fn generate_menu_definition() -> MenuTree {
         .unwrap();
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Langton))
+        .unwrap();
+    layer_0
+        .push(MenuGeneralItem::MenuProgram(MenuProgram::Synth))
         .unwrap();
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Beeper))

@@ -56,6 +56,7 @@ pub static ROTARY_ENCODER_ROTATE_RIGHT_CCW: AtomicU16 =
 
 pub static BUTTON_LEFT: AtomicU16 = AtomicU16::new(0);
 pub static BUTTON_RIGHT: AtomicU16 = AtomicU16::new(0);
+pub static BUTTON_RIGHT_RELEASED: AtomicU16 = AtomicU16::new(0);
 
 pub static DPAD_BOTTOM: AtomicU16 = AtomicU16::new(0);
 pub static DPAD_TOP: AtomicU16 = AtomicU16::new(0);
@@ -129,6 +130,7 @@ pub enum Input {
     RotaryEncoderRotateRight(Direction),
     ButtonLeft,
     ButtonRight,
+    ButtonRightReleased,
     DpadBottom,
     DpadTop,
     DpadLeft,
@@ -204,6 +206,7 @@ impl InputListener {
 
             Input::ButtonLeft => &BUTTON_LEFT,
             Input::ButtonRight => &BUTTON_RIGHT,
+            Input::ButtonRightReleased => &BUTTON_RIGHT_RELEASED,
             Input::DpadBottom => &DPAD_BOTTOM,
             Input::DpadTop => &DPAD_TOP,
             Input::DpadLeft => &DPAD_LEFT,

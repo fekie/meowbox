@@ -31,6 +31,16 @@ pub async fn button_right_listener(
         INPUT_CHANNEL.send(input_listener::Input::ButtonRight).await;
 
         Timer::after(BUTTON_DEBOUNCE).await;
+
+        if right_button.is_low() {
+            right_button.wait_for_rising_edge().await;
+        }
+
+        INPUT_CHANNEL
+            .send(input_listener::Input::ButtonRightReleased)
+            .await;
+
+        Timer::after(BUTTON_DEBOUNCE).await;
     }
 }
 

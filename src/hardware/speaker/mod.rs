@@ -59,11 +59,56 @@ pub static CRIES: &[Cry] =
 #[derive(Clone)]
 pub enum SpeakerCommand {
     Sine440Hz(embassy_time::Duration),
+    PlayWaveform {
+        waveform: Waveform,
+        frequency_hz: u16,
+        duration: embassy_time::Duration,
+    },
+    Silence,
     PlayPcm(&'static [u8]),
     PlayPcmWithVolume {
         samples: &'static [u8],
         volume_multiplier: f32,
     },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Waveform {
+    Sine,
+    Square,
+    Saw,
+    Triangle,
+}
+
+impl Waveform {
+    pub const COUNT: usize = 4;
+
+    pub fn index(self) -> usize {
+        match self {
+            Self::Sine => 0,
+            Self::Square => 1,
+            Self::Saw => 2,
+            Self::Triangle => 3,
+        }
+    }
+
+    pub fn from_index(index: usize) -> Self {
+        match index % Self::COUNT {
+            0 => Self::Sine,
+            1 => Self::Square,
+            2 => Self::Saw,
+            _ => Self::Triangle,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Sine => "Sine",
+            Self::Square => "Square",
+            Self::Saw => "Saw",
+            Self::Triangle => "Triangle",
+        }
+    }
 }
 
 pub(super) type SpeakerType = I2s<'static, Async>;
@@ -140,6 +185,7 @@ pub async fn speaker_task(speaker: SpeakerType) {
     let mut transfer = speaker_tx
         .write_dma_circular_async(&mut dma_buffer)
         .unwrap();
+    let mut waveform_phase = 0.0f32;
 
     loop {
         let cmd = SPEAKER_CHANNEL.receive().await;
@@ -164,6 +210,33 @@ pub async fn speaker_task(speaker: SpeakerType) {
                 buffer.fill(0);
                 for _ in 0..2 {
                     push_all(&mut transfer, &buffer).await;
+                }
+            }
+            SpeakerCommand::PlayWaveform {
+                waveform,
+                frequency_hz,
+                duration,
+            } => {
+                let mut buffer = [0u8; 2048];
+                let sample_rate = SPEAKER_SAMPLE_RATE as f32;
+                let start = Instant::now();
+
+                while start.elapsed() < duration {
+                    fill_waveform(
+                        &mut buffer,
+                        &mut waveform_phase,
+                        waveform,
+                        frequency_hz as f32,
+                        sample_rate,
+                    );
+                    push_all(&mut transfer, &buffer).await;
+                }
+            }
+            SpeakerCommand::Silence => {
+                waveform_phase = 0.0;
+                let silence = [0u8; 2048];
+                for _ in 0..2 {
+                    push_all(&mut transfer, &silence).await;
                 }
             }
             SpeakerCommand::PlayPcm(samples) => {
@@ -295,6 +368,53 @@ fn fill_sine(
         *phase += 2.0 * PI * freq / sample_rate;
         if *phase >= 2.0 * PI {
             *phase -= 2.0 * PI;
+        }
+    }
+}
+
+fn fill_waveform(
+    buffer: &mut [u8],
+    phase: &mut f32,
+    waveform: Waveform,
+    freq: f32,
+    sample_rate: f32,
+) {
+    for chunk in buffer.chunks_exact_mut(4) {
+        let sample =
+            (waveform_sample(waveform, *phase) * 14000.0) as i16;
+        let s = sample.to_le_bytes();
+
+        chunk[0] = s[0];
+        chunk[1] = s[1];
+        chunk[2] = s[0];
+        chunk[3] = s[1];
+
+        *phase += freq / sample_rate;
+        while *phase >= 1.0 {
+            *phase -= 1.0;
+        }
+    }
+}
+
+pub fn waveform_sample(waveform: Waveform, phase: f32) -> f32 {
+    let phase = phase - phase as u32 as f32;
+
+    match waveform {
+        Waveform::Sine => (phase * 2.0 * PI).sin(),
+        Waveform::Square => {
+            if phase < 0.5 {
+                1.0
+            } else {
+                -1.0
+            }
+        }
+        Waveform::Saw => phase * 2.0 - 1.0,
+        Waveform::Triangle => {
+            if phase < 0.5 {
+                phase * 4.0 - 1.0
+            } else {
+                3.0 - phase * 4.0
+            }
         }
     }
 }

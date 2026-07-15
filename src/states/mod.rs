@@ -17,6 +17,7 @@ pub mod langton;
 pub mod light_ring_loop;
 pub mod light_show;
 pub mod menu_state;
+pub mod synth;
 pub mod unimplemented;
 
 /// Static cells are used in this program to hold values we want
@@ -82,6 +83,7 @@ impl Meowbox {
             State::Cries(_, _) => self.tick_cries().await,
             State::Automata(_, _) => self.tick_automata().await,
             State::Langton(_, _) => self.tick_langton().await,
+            State::Synth(_, _) => self.tick_synth().await,
             State::Unimplemented(_) => {
                 self.tick_unimplemented().await
             }
@@ -135,6 +137,9 @@ impl Meowbox {
                 self.state =
                     State::Langton(Stage::Shutdown, langton_state);
             }
+            State::Synth(_, synth_state) => {
+                self.state = State::Synth(Stage::Shutdown, synth_state);
+            }
             State::Unimplemented(_) => {
                 self.state = State::Unimplemented(Stage::Shutdown);
             }
@@ -168,6 +173,7 @@ pub enum State {
     Cries(Stage, usize),
     Automata(Stage, AutomataState),
     Langton(Stage, LangtonState),
+    Synth(Stage, SynthState),
     Unimplemented(Stage),
     /// Does both the light ring and the flow field. This is a good
     /// way to see if the device is still "running" properly
@@ -246,6 +252,23 @@ pub struct LangtonState {
     pub palette_index: i32,
     pub cells: [u64; 75],
     pub cells_high: [u64; 75],
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SynthState {
+    pub frequency_hz: u16,
+    pub waveform: crate::hardware::speaker::Waveform,
+    pub playing: bool,
+}
+
+impl Default for SynthState {
+    fn default() -> Self {
+        Self {
+            frequency_hz: 440,
+            waveform: crate::hardware::speaker::Waveform::Sine,
+            playing: false,
+        }
+    }
 }
 
 impl Default for LangtonState {
