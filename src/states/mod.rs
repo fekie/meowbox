@@ -79,7 +79,7 @@ impl Meowbox {
             State::FlowField(_, _) => self.tick_flow_field().await,
             State::ErrorState(_) => self.tick_error_state().await,
             State::Menu(_, _) => self.tick_menu_state().await,
-            State::LightShow(_) => self.tick_light_show().await,
+            State::LightShow(_, _) => self.tick_light_show().await,
             State::Cries(_, _) => self.tick_cries().await,
             State::Automata(_, _) => self.tick_automata().await,
             State::Langton(_, _) => self.tick_langton().await,
@@ -123,8 +123,11 @@ impl Meowbox {
                     flow_field_state,
                 );
             }
-            State::LightShow(_) => {
-                self.state = State::LightShow(Stage::Shutdown);
+            State::LightShow(_, light_show_state) => {
+                self.state = State::LightShow(
+                    Stage::Shutdown,
+                    light_show_state,
+                );
             }
             State::Cries(_, cry_index) => {
                 self.state = State::Cries(Stage::Shutdown, cry_index);
@@ -138,7 +141,8 @@ impl Meowbox {
                     State::Langton(Stage::Shutdown, langton_state);
             }
             State::Synth(_, synth_state) => {
-                self.state = State::Synth(Stage::Shutdown, synth_state);
+                self.state =
+                    State::Synth(Stage::Shutdown, synth_state);
             }
             State::Unimplemented(_) => {
                 self.state = State::Unimplemented(Stage::Shutdown);
@@ -169,7 +173,7 @@ pub enum State {
     Menu(Stage, MenuState),
     LightRing(Stage, LightRingState),
     FlowField(Stage, FlowFieldState),
-    LightShow(Stage),
+    LightShow(Stage, LightShowState),
     Cries(Stage, usize),
     Automata(Stage, AutomataState),
     Langton(Stage, LangtonState),
@@ -212,6 +216,43 @@ pub enum ErrorStateType {
 pub enum FlowFieldState {
     Slow,
     Fast,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum LightShowMode {
+    RandomBlink,
+    RingTrail,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum LightShowDirection {
+    Clockwise,
+    Counterclockwise,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LightShowState {
+    pub mode: LightShowMode,
+    pub random_seed: u16,
+    pub random_interval_ms: u64,
+    pub random_light_count: u8,
+    pub ring_index: usize,
+    pub ring_step_ms: u64,
+    pub ring_direction: LightShowDirection,
+}
+
+impl Default for LightShowState {
+    fn default() -> Self {
+        Self {
+            mode: LightShowMode::RandomBlink,
+            random_seed: 0xace1,
+            random_interval_ms: 250,
+            random_light_count: 4,
+            ring_index: 0,
+            ring_step_ms: 10,
+            ring_direction: LightShowDirection::Clockwise,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

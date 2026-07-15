@@ -26,8 +26,8 @@ use crate::{
     },
     input_listener::{Input, InputListener, KillSignal},
     states::{
-        AutomataState, ErrorStateType, LangtonState, MenuState, Stage,
-        SynthState,
+        AutomataState, ErrorStateType, LangtonState, LightShowState,
+        MenuState, Stage, SynthState,
     },
     tasks::all_leds_off,
 };
@@ -137,7 +137,10 @@ impl Meowbox {
             self.next_state = match selected {
                 Some(MenuGeneralItem::MenuProgram(
                     MenuProgram::LightShow,
-                )) => Some(State::LightShow(Stage::Setup)),
+                )) => Some(State::LightShow(
+                    Stage::Setup,
+                    LightShowState::default(),
+                )),
                 Some(MenuGeneralItem::MenuProgram(
                     MenuProgram::Cries,
                 )) => Some(State::Cries(Stage::Setup, 0)),

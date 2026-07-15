@@ -158,33 +158,6 @@ fn generate_menu_definition() -> MenuTree {
     layer_0
         .push(MenuGeneralItem::MenuProgram(MenuProgram::Synth))
         .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Beeper))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::FlowField))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Seizure))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Polyhedra))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::BadDecision))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Wireframe))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Sounds))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuProgram(MenuProgram::Conway))
-        .unwrap();
-    layer_0
-        .push(MenuGeneralItem::MenuFolder(MenuFolder::Tests))
-        .unwrap();
 
     let mut layer_1 = Vec::new();
 
